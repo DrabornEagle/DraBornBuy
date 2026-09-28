@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
+// One-time idempotent source update for the live-order UI wording.
 const dbb_path = 'src/dbb-app.tsx';
 let dbb_source = await readFile(dbb_path, 'utf8');
 
