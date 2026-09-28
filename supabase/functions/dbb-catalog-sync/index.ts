@@ -1,9 +1,7 @@
 // Scheduled discovery of public product catalog and online reference data.
-// An online price/stock never becomes an Ankara branch offer or checkout total.
+// Public list prices are stored separately from physical branch availability.
 import { createClient } from 'npm:@supabase/supabase-js@2.58.0';
 
-// The source page exposes a JSON product model with a current *online* price
-// and inventory. Neither field is evidence of stock in an Ankara branch.
 export function dbb_parse_detail(html: string, sourceUrl: string) {
   const rest = html.split('var productDetailModel = ')[1];
   let end = -1,depth=0,inside=false,escaped=false;
@@ -45,7 +43,7 @@ export function dbb_parse_detail(html: string, sourceUrl: string) {
     dbb_category:category,dbb_image_url:image,dbb_source_url:sourceUrl,
     dbb_source_merchant:'Altunbilekler',dbb_last_seen_at:now,dbb_active:true,
     ...(barcode && /^\d{8,14}$/.test(barcode) ? {dbb_barcode:barcode}:{}),
-    dbb_catalog_price_kurus:onlineInStock && Number.isFinite(price) && price > 0 ? Math.round(price*100) : null,
+    dbb_catalog_price_kurus:Number.isFinite(price) && price > 0 ? Math.round(price*100) : null,
     dbb_catalog_in_stock:onlineInStock,dbb_catalog_checked_at:now};
 }
 
@@ -61,20 +59,18 @@ Deno.serve(async req => {
   if (runError) return new Response('Sync log unavailable',{status:500});
   let discovered=0,failed=0;
   const errors:string[]=[];
-  // Walk the retailer's published product sitemaps in small batches. The
-  // cursor persists between runs and eventually covers the entire catalog.
   try {
     const {data:cursor,error:cursorError}=await dbb.from('dbb_catalog_cursor')
       .select('dbb_position').eq('dbb_source','altunbilekler').single();
     if (cursorError || !cursor) throw new Error('Catalog cursor unavailable');
     const sitemapIndex=await fetch('https://www.altunbilekler.com/sitemap.xml',
-      {headers:{'User-Agent':'DraBornBuy-Catalog/1.1'},signal:AbortSignal.timeout(12000)});
+      {headers:{'User-Agent':'DraBornBuy-Catalog/1.2'},signal:AbortSignal.timeout(12000)});
     if (!sitemapIndex.ok) throw new Error('Sitemap unavailable');
     const maps=[...(await sitemapIndex.text()).matchAll(/<loc>(https:\/\/www\.altunbilekler\.com\/sitemap\/products\/\d+\.xml)<\/loc>/g)]
       .map(match=>match[1]);
     if (!maps.length) throw new Error('No product sitemaps');
     const page=Math.floor(cursor.dbb_position/500)%maps.length;
-    const sitemap=await fetch(maps[page],{headers:{'User-Agent':'DraBornBuy-Catalog/1.1'},signal:AbortSignal.timeout(12000)});
+    const sitemap=await fetch(maps[page],{headers:{'User-Agent':'DraBornBuy-Catalog/1.2'},signal:AbortSignal.timeout(12000)});
     if (!sitemap.ok) throw new Error('Product sitemap unavailable');
     const links=[...(await sitemap.text()).matchAll(/<loc>(https:\/\/www\.altunbilekler\.com\/[^<]+)<\/loc>/g)]
       .map(match=>match[1].replaceAll('&amp;','&'));
@@ -88,7 +84,7 @@ Deno.serve(async req => {
     if (claimError || !claim?.length) throw new Error('Concurrent crawl claimed the batch');
     for (let start=0;start<targets.length;start+=6) {
       const results=await Promise.allSettled(targets.slice(start,start+6).map(async target=>{
-        const response=await fetch(target,{headers:{'User-Agent':'DraBornBuy-Catalog/1.1'},signal:AbortSignal.timeout(14000)});
+        const response=await fetch(target,{headers:{'User-Agent':'DraBornBuy-Catalog/1.2'},signal:AbortSignal.timeout(14000)});
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const html=await response.text();
         if (html.length>750000) throw new Error('Oversized product page');
@@ -103,7 +99,6 @@ Deno.serve(async req => {
       if (products.length) {
         const {error}=await dbb.from('dbb_products').upsert(products,{onConflict:'dbb_external_key'});
         if (error) {
-          // A duplicate retailer barcode must not block unrelated products.
           const withoutBarcodes=products.map(({dbb_barcode,...rest})=>rest);
           const retry=await dbb.from('dbb_products').upsert(withoutBarcodes,{onConflict:'dbb_external_key'});
           if (retry.error) { failed+=products.length; errors.push(retry.error.message.slice(0,100)); }
