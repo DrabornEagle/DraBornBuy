@@ -496,8 +496,8 @@ export default function Dbb_App() {
       <Dbb_Button dbb_title="Ürün ara" dbb_onPress={() => dbb_set_tab('search')} /></Dbb_Card> : <>
       <View style={{borderRadius:22,backgroundColor:'#FFF6E0',borderWidth:1,borderColor:'#F4D486',padding:18,gap:8}}>
         <Text style={{color:'#866127',fontSize:11,fontWeight:'900'}}>ALIŞVERİŞ LİSTEN</Text>
-        <Text style={{color:'#183B2F',fontSize:29,fontWeight:'900'}}>{dbb_reference_total===null?'Fiyatlar tamamlanıyor':dbb_lira(dbb_reference_total)}</Text>
-        <Text style={{color:'#675E48',fontSize:12,lineHeight:18}}>{dbb_reference_total===null?'Bazı ürünlerin çevrimiçi kaynak fiyatı bulunmuyor.':'Çevrimiçi kaynaklardaki ürün toplamı · teslimat ve hizmet hariç.'}</Text>
+        <Text style={{color:'#183B2F',fontSize:29,fontWeight:'900'}}>{dbb_reference_total===null?'Toplam hesaplanamıyor':dbb_lira(dbb_reference_total)}</Text>
+        <Text style={{color:'#675E48',fontSize:12,lineHeight:18}}>{dbb_reference_total===null?'Bazı ürünlerin güncel çevrimiçi fiyatı veya stoğu yok.':'Çevrimiçi kaynaklardaki ürün toplamı · teslimat ve hizmet hariç.'}</Text>
         <View style={{flexDirection:'row',gap:8,alignItems:'center'}}><Ionicons name="checkmark-circle" color="#198563" size={17}/><Text style={{color:'#345F4B',fontWeight:'800',fontSize:12}}>{dbb_count} ürün sepetinde</Text></View>
       </View>
       {dbb_basket.map(dbb_item => {
