@@ -27,6 +27,9 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
   const [dbb_items, dbb_set_items] = useState<Dbb_OrderItem[]>([]);
   const [dbb_events, dbb_set_events] = useState<{ dbb_id: string; dbb_status: string; dbb_note: string; dbb_created_at: string }[]>([]);
   const [dbb_messages, dbb_set_messages] = useState<Dbb_Message[]>([]);
+  const [dbb_shop_receipts, dbb_set_shop_receipts] = useState<{dbb_id:string;dbb_store_id:string;dbb_object_path:string}[]>([]);
+  const [dbb_settlement, dbb_set_settlement] = useState<{dbb_actual_total_kurus:number;dbb_difference_kurus:number;dbb_status:string}|null>(null);
+  const [dbb_shop_image, dbb_set_shop_image] = useState<Record<string,string>>({});
   const [dbb_message, dbb_set_message] = useState('');
   const [dbb_courier_location, dbb_set_courier_location] = useState<{ dbb_lat: number; dbb_lon: number } | null>(null);
   const [dbb_pending, dbb_set_pending] = useState(false);
@@ -43,14 +46,17 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
 
   const dbb_detail = useCallback(async () => {
     if (!dbb_client || !dbb_selected) return;
-    const [dbb_item_result, dbb_event_result, dbb_chat_result, dbb_location_result] = await Promise.all([
+    const [dbb_item_result, dbb_event_result, dbb_chat_result, dbb_location_result, dbb_receipt_result, dbb_settlement_result] = await Promise.all([
       dbb_client.from('dbb_order_items').select('*').eq('dbb_order_id',dbb_selected),
       dbb_client.from('dbb_order_events').select('*').eq('dbb_order_id',dbb_selected).order('dbb_created_at',{ascending:true}),
       dbb_client.from('dbb_messages').select('*').eq('dbb_order_id',dbb_selected).order('dbb_created_at',{ascending:true}),
-      dbb_client.from('dbb_order_locations').select('dbb_lat,dbb_lon').eq('dbb_order_id',dbb_selected).maybeSingle()
+      dbb_client.from('dbb_order_locations').select('dbb_lat,dbb_lon').eq('dbb_order_id',dbb_selected).maybeSingle(),
+      dbb_client.from('dbb_shop_receipts').select('dbb_id,dbb_store_id,dbb_object_path').eq('dbb_order_id',dbb_selected),
+      dbb_client.from('dbb_settlements').select('dbb_actual_total_kurus,dbb_difference_kurus,dbb_status').eq('dbb_order_id',dbb_selected).maybeSingle()
     ]);
     dbb_set_items(dbb_item_result.data || []); dbb_set_events(dbb_event_result.data || []);
     dbb_set_messages(dbb_chat_result.data || []); dbb_set_courier_location(dbb_location_result.data || null);
+    dbb_set_shop_receipts(dbb_receipt_result.data || []); dbb_set_settlement(dbb_settlement_result.data || null);
   }, [dbb_selected]);
   useEffect(() => {
     dbb_detail();
@@ -60,7 +66,9 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
       .on('postgres_changes', { event:'*', schema:'public', table:'dbb_order_items', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail)
       .on('postgres_changes', { event:'*', schema:'public', table:'dbb_order_events', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail)
       .on('postgres_changes', { event:'*', schema:'public', table:'dbb_messages', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail)
-      .on('postgres_changes', { event:'*', schema:'public', table:'dbb_order_locations', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail).subscribe();
+      .on('postgres_changes', { event:'*', schema:'public', table:'dbb_order_locations', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail)
+      .on('postgres_changes', { event:'*', schema:'public', table:'dbb_shop_receipts', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail)
+      .on('postgres_changes', { event:'*', schema:'public', table:'dbb_settlements', filter:`dbb_order_id=eq.${dbb_selected}` }, dbb_detail).subscribe();
     return () => { dbb_client?.removeChannel(dbb_channel); };
   }, [dbb_selected, dbb_detail, dbb_refresh]);
 
@@ -86,6 +94,11 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
     if (!dbb_client || !dbb_order || !dbb_user_id || !dbb_text.trim()) return;
     const { error: dbb_error } = await dbb_client.from('dbb_messages').insert({ dbb_order_id:dbb_order.dbb_id, dbb_sender_id:dbb_user_id, dbb_body:dbb_text.trim() });
     if (dbb_error) dbb_notice(dbb_error.message); else { dbb_set_message(''); dbb_detail(); }
+  };
+  const dbb_view_shop_receipt = async (dbb_receipt_id:string,dbb_path:string) => {
+    if (!dbb_client) return;
+    const {data:dbb_data,error:dbb_error} = await dbb_client.storage.from('dbb_shop_receipts').createSignedUrl(dbb_path,60);
+    if (dbb_error) dbb_notice(dbb_error.message); else dbb_set_shop_image(dbb_old => ({...dbb_old,[dbb_receipt_id]:dbb_data.signedUrl}));
   };
 
   return <View style={{ gap: 18 }}><Text style={dbb_styles.heading}>Siparişlerim</Text>
@@ -132,8 +145,18 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
         <TextInput style={dbb_styles.input} value={dbb_message} onChangeText={dbb_set_message} placeholder="Kuryeye mesaj yaz..." placeholderTextColor="#7580A0" />
         <Dbb_Button dbb_title="Gönder" dbb_onPress={() => dbb_send(dbb_message)} dbb_disabled={!dbb_message.trim()} />
       </Dbb_Card></Dbb_Section>}
-      {dbb_order.dbb_status === 'delivered' && <Dbb_Card><Text style={dbb_styles.itemTitle}>Fiş mutabakatı bekleniyor</Text>
-        <Text style={dbb_styles.muted}>Tahmini fiyat ile gerçek alışveriş farkı yönetici kontrolünden sonra iade veya tahsilat olarak işlenecek.</Text></Dbb_Card>}
+      {dbb_shop_receipts.length > 0 && <Dbb_Card><Text style={dbb_styles.itemTitle}>Mağaza fişleri · {dbb_shop_receipts.length}</Text>
+        {dbb_shop_receipts.map((dbb_receipt,dbb_index) => <View key={dbb_receipt.dbb_id} style={{gap:7}}>
+          <Dbb_Button dbb_title={`${dbb_index+1}. mağaza fişini göster`} dbb_kind="ghost" dbb_onPress={() => dbb_view_shop_receipt(dbb_receipt.dbb_id,dbb_receipt.dbb_object_path)} />
+          {dbb_shop_image[dbb_receipt.dbb_id] && <Image source={{uri:dbb_shop_image[dbb_receipt.dbb_id]}} style={{height:220,width:'100%'}} resizeMode="contain" />}</View>)}
+      </Dbb_Card>}
+      {['delivered','reconciling','completed'].includes(dbb_order.dbb_status) && <Dbb_Card><Text style={dbb_styles.itemTitle}>Fiş mutabakatı</Text>
+        {dbb_settlement ? <><Text style={dbb_styles.muted}>Fişlerde işaretlenen ürünlerin toplamıyla hesaplanan gerçek genel tutar: {dbb_lira(dbb_settlement.dbb_actual_total_kurus)}</Text>
+          <Text style={{color:dbb_settlement.dbb_difference_kurus<0?dbb_theme.mint:dbb_theme.yellow,fontWeight:'900'}}>
+            {dbb_settlement.dbb_difference_kurus<0 ? `İade alacağın: ${dbb_lira(-dbb_settlement.dbb_difference_kurus)}` :
+             dbb_settlement.dbb_difference_kurus>0 ? `Ek ödeme farkı: ${dbb_lira(dbb_settlement.dbb_difference_kurus)}` : 'Fiyat farkı yok'}</Text>
+          <Text style={dbb_styles.muted}>Durum: {dbb_settlement.dbb_status==='completed'?'Manuel işlem tamamlandı':'Yönetici banka mutabakatını tamamlıyor'}</Text></> :
+          <Text style={dbb_styles.muted}>Yönetici fişleri ve gerçek fiyatları kontrol edecek; iade veya ek tutar otomatik çekilmez.</Text>}</Dbb_Card>}
       </>}
     </>}
   </View>;
@@ -149,6 +172,7 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
   const [dbb_active, dbb_set_active] = useState<Dbb_Order|null>(null);
   const [dbb_items, dbb_set_items] = useState<Dbb_OrderItem[]>([]);
   const [dbb_stores, dbb_set_stores] = useState<Dbb_Store[]>([]);
+  const [dbb_receipts, dbb_set_receipts] = useState<{dbb_id:string;dbb_store_id:string}[]>([]);
   const [dbb_price, dbb_set_price] = useState<Record<string,string>>({});
   const [dbb_location_watch, dbb_set_location_watch] = useState<LocationSubscription|null>(null);
   const [dbb_demo_stage, dbb_set_demo_stage] = useState(0);
@@ -173,12 +197,14 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
   useEffect(() => { dbb_refresh(); }, [dbb_refresh]);
   const dbb_load_active = useCallback(async () => {
     if (!dbb_client || !dbb_active) return;
-    const [dbb_items_result, dbb_stores_result, dbb_chat_result] = await Promise.all([
+    const [dbb_items_result, dbb_stores_result, dbb_chat_result, dbb_receipts_result] = await Promise.all([
       dbb_client.from('dbb_order_items').select('*').eq('dbb_order_id',dbb_active.dbb_id),
       dbb_client.from('dbb_stores').select('*').in('dbb_id',dbb_active.dbb_route_store_ids),
-      dbb_client.from('dbb_messages').select('*').eq('dbb_order_id',dbb_active.dbb_id).order('dbb_created_at',{ascending:true})
+      dbb_client.from('dbb_messages').select('*').eq('dbb_order_id',dbb_active.dbb_id).order('dbb_created_at',{ascending:true}),
+      dbb_client.from('dbb_shop_receipts').select('dbb_id,dbb_store_id').eq('dbb_order_id',dbb_active.dbb_id)
     ]);
     dbb_set_items(dbb_items_result.data || []); dbb_set_stores(dbb_stores_result.data || []); dbb_set_chats(dbb_chat_result.data || []);
+    dbb_set_receipts(dbb_receipts_result.data || []);
   }, [dbb_active?.dbb_id]);
   useEffect(() => { dbb_load_active(); }, [dbb_load_active]);
   useEffect(() => {
@@ -186,7 +212,8 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
     const dbb_channel = dbb_client.channel(`dbb-courier-${dbb_active.dbb_id}`)
       .on('postgres_changes',{event:'*',schema:'public',table:'dbb_orders',filter:`dbb_id=eq.${dbb_active.dbb_id}`},dbb_refresh)
       .on('postgres_changes',{event:'*',schema:'public',table:'dbb_order_items',filter:`dbb_order_id=eq.${dbb_active.dbb_id}`},dbb_load_active)
-      .on('postgres_changes',{event:'*',schema:'public',table:'dbb_messages',filter:`dbb_order_id=eq.${dbb_active.dbb_id}`},dbb_load_active).subscribe();
+      .on('postgres_changes',{event:'*',schema:'public',table:'dbb_messages',filter:`dbb_order_id=eq.${dbb_active.dbb_id}`},dbb_load_active)
+      .on('postgres_changes',{event:'*',schema:'public',table:'dbb_shop_receipts',filter:`dbb_order_id=eq.${dbb_active.dbb_id}`},dbb_load_active).subscribe();
     return () => { dbb_client?.removeChannel(dbb_channel); };
   }, [dbb_active?.dbb_id, dbb_refresh, dbb_load_active]);
   useEffect(() => () => { dbb_location_watch?.remove(); }, [dbb_location_watch]);
@@ -211,6 +238,26 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
     const dbb_value = dbb_status === 'found' ? Math.round(Number((dbb_price[dbb_item.dbb_id] || String(dbb_item.dbb_unit_price_kurus / 100)).replace(',','.')) * 100) : null;
     const { error: dbb_error } = await dbb_client.rpc('dbb_mark_item',{dbb_p_item_id:dbb_item.dbb_id,dbb_p_status:dbb_status,dbb_p_actual_price_kurus:dbb_value});
     if (dbb_error) dbb_notice(dbb_error.message); else dbb_load_active();
+  };
+  const dbb_upload_shop_receipt = async (dbb_camera:boolean) => {
+    if (!dbb_client || !dbb_user_id || !dbb_active) return;
+    const dbb_store_id = dbb_active.dbb_route_store_ids[dbb_active.dbb_stop_index];
+    try {
+      const dbb_image = dbb_camera ? await ImagePicker.launchCameraAsync({mediaTypes:['images'],quality:.75,base64:true}) :
+        await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],quality:.75,base64:true});
+      if (dbb_image.canceled || !dbb_image.assets[0]?.base64) return;
+      const dbb_asset = dbb_image.assets[0];
+      if (!['image/jpeg','image/png'].includes(dbb_asset.mimeType || 'image/jpeg')) throw new Error('JPG veya PNG fiş gerekli.');
+      const dbb_mime = dbb_asset.mimeType || 'image/jpeg';
+      const dbb_path = `${dbb_user_id}/${dbb_active.dbb_id}/${dbb_store_id}-${Date.now()}.${dbb_mime==='image/png'?'png':'jpg'}`;
+      const {error:dbb_upload_error} = await dbb_client.storage.from('dbb_shop_receipts').upload(dbb_path,decode(dbb_asset.base64!),{contentType:dbb_mime,upsert:false});
+      if (dbb_upload_error) throw dbb_upload_error;
+      const {error:dbb_claim_error} = await dbb_client.rpc('dbb_submit_shop_receipt',{
+        dbb_p_order_id:dbb_active.dbb_id,dbb_p_store_id:dbb_store_id,dbb_p_object_path:dbb_path
+      });
+      if (dbb_claim_error) throw dbb_claim_error;
+      dbb_notice('Fiş mağaza durağına kaydedildi.'); dbb_load_active();
+    } catch (dbb_error) { dbb_notice((dbb_error as Error).message); }
   };
   const dbb_share_location = async () => {
     if (!dbb_client || !dbb_active) return;
@@ -288,6 +335,11 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
               <View style={dbb_styles.row}><View style={{flex:1}}><Dbb_Button dbb_title="Bulundu" dbb_kind="mint" dbb_onPress={() => dbb_mark(dbb_item,'found')} /></View>
                 <View style={{flex:1}}><Dbb_Button dbb_title="Ürün yok" dbb_kind="ghost" dbb_onPress={() => dbb_mark(dbb_item,'missing')} /></View></View>
             </View>)}
+            {dbb_receipts.some(dbb_receipt => dbb_receipt.dbb_store_id === dbb_stop?.dbb_id) ?
+              <Text style={{color:dbb_theme.mint,fontWeight:'800'}}>✓ Bu mağazanın fişi yüklendi</Text> :
+              <View style={{gap:9}}><Text style={dbb_styles.muted}>Mağazadan ayrılmadan fişi yükle.</Text>
+                <Dbb_Button dbb_title="Fişin fotoğrafını çek" dbb_kind="mint" dbb_icon="camera-outline" dbb_onPress={() => dbb_upload_shop_receipt(true)} />
+                <Dbb_Button dbb_title="Galeriden fiş seç" dbb_kind="ghost" dbb_icon="images-outline" dbb_onPress={() => dbb_upload_shop_receipt(false)} /></View>}
             <Dbb_Button dbb_title={dbb_active.dbb_stop_index + 1 === dbb_active.dbb_route_store_ids.length ? 'Teslimata çık' : 'Sonraki mağazaya git'}
               dbb_onPress={() => dbb_advance(dbb_active.dbb_stop_index + 1 === dbb_active.dbb_route_store_ids.length ? 'delivery' : 'store_trip')} />
           </>}
@@ -309,19 +361,36 @@ export function Dbb_Admin({ dbb_user_id, dbb_notice }: { dbb_user_id: string; db
   const [dbb_admin, dbb_set_admin] = useState(false);
   const [dbb_claims, dbb_set_claims] = useState<{dbb_id:string;dbb_order_id:string;dbb_object_path:string;dbb_created_at:string;dbb_orders:{dbb_code:string;dbb_total_kurus:number}}[]>([]);
   const [dbb_couriers, dbb_set_couriers] = useState<{dbb_user_id:string;dbb_name:string;dbb_phone:string}[]>([]);
+  const [dbb_review_orders, dbb_set_review_orders] = useState<Dbb_Order[]>([]);
+  const [dbb_review_items, dbb_set_review_items] = useState<Dbb_OrderItem[]>([]);
+  const [dbb_review_receipts, dbb_set_review_receipts] = useState<{dbb_id:string;dbb_order_id:string;dbb_object_path:string}[]>([]);
+  const [dbb_review_settlements, dbb_set_review_settlements] = useState<{dbb_order_id:string;dbb_actual_total_kurus:number;dbb_difference_kurus:number}[]>([]);
   const [dbb_bank_refs, dbb_set_bank_refs] = useState<Record<string,string>>({});
   const [dbb_bank_checked, dbb_set_bank_checked] = useState<Record<string,boolean>>({});
   const [dbb_receipt_urls, dbb_set_receipt_urls] = useState<Record<string,string>>({});
   useEffect(() => { dbb_client?.from('dbb_admins').select('dbb_user_id').eq('dbb_user_id',dbb_user_id).maybeSingle().then(({data:dbb_data}) => dbb_set_admin(Boolean(dbb_data))); }, [dbb_user_id]);
   const dbb_refresh = useCallback(async () => {
     if (!dbb_client || !dbb_admin) return;
-    const [dbb_claim_result, dbb_courier_result] = await Promise.all([
+    const [dbb_claim_result, dbb_courier_result, dbb_order_result] = await Promise.all([
       dbb_client.from('dbb_payment_claims').select('dbb_id,dbb_order_id,dbb_object_path,dbb_created_at,dbb_orders(dbb_code,dbb_total_kurus)').eq('dbb_status','pending'),
-      dbb_client.from('dbb_courier_profiles').select('dbb_user_id,dbb_name,dbb_phone').eq('dbb_approved',false)
+      dbb_client.from('dbb_courier_profiles').select('dbb_user_id,dbb_name,dbb_phone').eq('dbb_approved',false),
+      dbb_client.from('dbb_orders').select('*').in('dbb_status',['delivered','reconciling']).order('dbb_created_at',{ascending:false})
     ]);
     if (dbb_claim_result.error) dbb_notice(dbb_claim_result.error.message);
     else dbb_set_claims(dbb_claim_result.data as unknown as typeof dbb_claims);
     if (!dbb_courier_result.error) dbb_set_couriers(dbb_courier_result.data || []);
+    if (dbb_order_result.error) { dbb_notice(dbb_order_result.error.message); return; }
+    dbb_set_review_orders(dbb_order_result.data || []);
+    const dbb_ids = (dbb_order_result.data || []).map(dbb_order => dbb_order.dbb_id);
+    if (dbb_ids.length) {
+      const [dbb_items_result,dbb_receipts_result,dbb_settlements_result] = await Promise.all([
+        dbb_client.from('dbb_order_items').select('*').in('dbb_order_id',dbb_ids),
+        dbb_client.from('dbb_shop_receipts').select('dbb_id,dbb_order_id,dbb_object_path').in('dbb_order_id',dbb_ids),
+        dbb_client.from('dbb_settlements').select('dbb_order_id,dbb_actual_total_kurus,dbb_difference_kurus').in('dbb_order_id',dbb_ids)
+      ]);
+      dbb_set_review_items(dbb_items_result.data || []); dbb_set_review_receipts(dbb_receipts_result.data || []);
+      dbb_set_review_settlements(dbb_settlements_result.data || []);
+    } else { dbb_set_review_items([]); dbb_set_review_receipts([]); dbb_set_review_settlements([]); }
   }, [dbb_admin]);
   useEffect(() => { dbb_refresh(); }, [dbb_refresh]);
   const dbb_review = async (dbb_claim_id: string, dbb_approve: boolean) => {
@@ -333,18 +402,29 @@ export function Dbb_Admin({ dbb_user_id, dbb_notice }: { dbb_user_id: string; db
     });
     if (dbb_error) dbb_notice(dbb_error.message); else { dbb_notice(dbb_approve ? 'Ödeme banka referansıyla onaylandı.' : 'Dekont reddedildi.'); dbb_refresh(); }
   };
-  const dbb_show_receipt = async (dbb_claim_id:string, dbb_path:string) => {
+  const dbb_show_receipt = async (dbb_claim_id:string, dbb_path:string, dbb_bucket:'dbb_receipts'|'dbb_shop_receipts'='dbb_receipts') => {
     if (!dbb_client) return;
-    const {data:dbb_data,error:dbb_error} = await dbb_client.storage.from('dbb_receipts').createSignedUrl(dbb_path,60);
+    const {data:dbb_data,error:dbb_error} = await dbb_client.storage.from(dbb_bucket).createSignedUrl(dbb_path,60);
     if (dbb_error) dbb_notice(dbb_error.message); else dbb_set_receipt_urls(dbb_old => ({...dbb_old,[dbb_claim_id]:dbb_data.signedUrl}));
   };
   const dbb_approve_courier = async (dbb_courier_id:string) => {
     const {error:dbb_error} = await dbb_client!.from('dbb_courier_profiles').update({dbb_approved:true}).eq('dbb_user_id',dbb_courier_id);
     if (dbb_error) dbb_notice(dbb_error.message); else { dbb_notice('Kurye hesabı onaylandı.'); dbb_refresh(); }
   };
+  const dbb_reconcile = async (dbb_order_id:string) => {
+    const {data:dbb_data,error:dbb_error} = await dbb_client!.rpc('dbb_reconcile_order',{dbb_p_order_id:dbb_order_id});
+    if (dbb_error) dbb_notice(dbb_error.message); else {dbb_notice(`Mutabakat hesaplandı: ${dbb_lira(dbb_data.dbb_difference_kurus)} fark.`);dbb_refresh();}
+  };
+  const dbb_finalize = async (dbb_order_id:string,dbb_difference:number) => {
+    if (dbb_difference !== 0 && !dbb_bank_checked[dbb_order_id]) {dbb_notice('İade veya ek ödemenin banka kaydını önce manuel doğrula.');return;}
+    const {error:dbb_error} = await dbb_client!.rpc('dbb_finalize_order',{
+      dbb_p_order_id:dbb_order_id,dbb_p_reference:dbb_bank_refs[dbb_order_id] || '',dbb_p_note:'Banka mutabakatı operasyon tarafından kontrol edildi'
+    });
+    if (dbb_error) dbb_notice(dbb_error.message); else {dbb_notice('Sipariş mutabakatı tamamlandı.');dbb_refresh();}
+  };
   if (!dbb_admin) return null;
   return <Dbb_Section dbb_title="Operasyon paneli" dbb_caption="Ödeme kararı yalnızca gerçek banka hareketi kontrolünden sonra verilir.">
-    <Dbb_Card><Dbb_Pill dbb_label="YÖNETİCİ" dbb_tone="pink" /><Text style={dbb_styles.itemTitle}>{dbb_claims.length} dekont · {dbb_couriers.length} kurye başvurusu</Text>
+    <Dbb_Card><Dbb_Pill dbb_label="YÖNETİCİ" dbb_tone="pink" /><Text style={dbb_styles.itemTitle}>{dbb_claims.length} dekont · {dbb_couriers.length} kurye başvurusu · {dbb_review_orders.length} mutabakat</Text>
       <Dbb_Button dbb_title="Listeyi yenile" dbb_kind="ghost" dbb_onPress={dbb_refresh} />
       {dbb_claims.map(dbb_claim => <View key={dbb_claim.dbb_id} style={{gap:9,borderTopWidth:1,borderColor:dbb_theme.line,paddingTop:12}}>
         <Text style={dbb_styles.itemTitle}>#{dbb_claim.dbb_orders?.dbb_code} · {dbb_lira(dbb_claim.dbb_orders?.dbb_total_kurus || 0)}</Text>
@@ -361,6 +441,27 @@ export function Dbb_Admin({ dbb_user_id, dbb_notice }: { dbb_user_id: string; db
         <Text style={dbb_styles.itemTitle}>Kurye: {dbb_courier.dbb_name}</Text><Text style={dbb_styles.muted}>{dbb_courier.dbb_phone}</Text>
         <Dbb_Button dbb_title="Kurye hesabını onayla" dbb_kind="ghost" dbb_onPress={() => dbb_approve_courier(dbb_courier.dbb_user_id)} />
       </View>)}
+      {dbb_review_orders.map(dbb_order => {
+        const dbb_settlement = dbb_review_settlements.find(dbb_row => dbb_row.dbb_order_id===dbb_order.dbb_id);
+        return <View key={dbb_order.dbb_id} style={{gap:9,borderTopWidth:1,borderColor:dbb_theme.line,paddingTop:12}}>
+          <Text style={dbb_styles.itemTitle}>{dbb_order.dbb_code} · {dbb_steps[dbb_order.dbb_status]}</Text>
+          <Text style={dbb_styles.muted}>Ödenen: {dbb_lira(dbb_order.dbb_total_kurus)}</Text>
+          {dbb_review_items.filter(dbb_item => dbb_item.dbb_order_id===dbb_order.dbb_id).map(dbb_item =>
+            <Text key={dbb_item.dbb_id} style={dbb_styles.muted}>{dbb_item.dbb_pick_status==='found'?'✓':'×'} {dbb_item.dbb_product_name} ×{dbb_item.dbb_quantity} · Gerçek birim {dbb_item.dbb_actual_price_kurus===null?'—':dbb_lira(dbb_item.dbb_actual_price_kurus)}</Text>)}
+          {dbb_review_receipts.filter(dbb_receipt => dbb_receipt.dbb_order_id===dbb_order.dbb_id).map(dbb_receipt =>
+            <View key={dbb_receipt.dbb_id} style={{gap:5}}><Dbb_Button dbb_title="Mağaza fişini göster" dbb_kind="ghost" dbb_onPress={() => dbb_show_receipt(dbb_receipt.dbb_id,dbb_receipt.dbb_object_path,'dbb_shop_receipts')} />
+              {dbb_receipt_urls[dbb_receipt.dbb_id] && <Image source={{uri:dbb_receipt_urls[dbb_receipt.dbb_id]}} style={{width:'100%',height:220}} resizeMode="contain" />}</View>)}
+          {dbb_order.dbb_status==='delivered' && <Dbb_Button dbb_title="Fişleri kontrol ettim · farkı hesapla" dbb_kind="mint" dbb_onPress={() => dbb_reconcile(dbb_order.dbb_id)} />}
+          {dbb_order.dbb_status==='reconciling' && dbb_settlement && <>
+            <Text style={{color:dbb_theme.yellow,fontWeight:'900'}}>Gerçek toplam: {dbb_lira(dbb_settlement.dbb_actual_total_kurus)} · Fark: {dbb_lira(dbb_settlement.dbb_difference_kurus)}</Text>
+            {dbb_settlement.dbb_difference_kurus!==0 && <><Text style={dbb_styles.muted}>{dbb_settlement.dbb_difference_kurus<0?'Müşteriye iade':'Müşteriden ek ödeme'} banka işlem referansı</Text>
+              <TextInput style={dbb_styles.input} value={dbb_bank_refs[dbb_order.dbb_id] || ''} onChangeText={dbb_value => dbb_set_bank_refs(dbb_old => ({...dbb_old,[dbb_order.dbb_id]:dbb_value}))} placeholder="Benzersiz banka referansı" placeholderTextColor="#7580A0" />
+              <Pressable onPress={() => dbb_set_bank_checked(dbb_old => ({...dbb_old,[dbb_order.dbb_id]:!dbb_old[dbb_order.dbb_id]}))}>
+                <Text style={{color:dbb_theme.mint}}>{dbb_bank_checked[dbb_order.dbb_id]?'☑':'□'} İade/ek ödeme banka işlemini kontrol ettim</Text></Pressable></>}
+            <Dbb_Button dbb_title="Mutabakatı tamamla" dbb_kind="mint" dbb_onPress={() => dbb_finalize(dbb_order.dbb_id,dbb_settlement.dbb_difference_kurus)} />
+          </>}
+        </View>;
+      })}
     </Dbb_Card>
   </Dbb_Section>;
 }

@@ -29,8 +29,9 @@ Telefon ve Expo Go aynı Wi-Fi ağında olmalı. Expo Go 58.0.0 ile Termux'ta g�
 - Tek mağaza ve toplam maliyeti en düşük mağaza kombinasyonu. 50.000'e kadar kombinasyon tam taranır; daha büyük sepetlerde 180 adaylı yaklaşık arama açıkça etiketlenir. En fazla 4 mağazalık gerçek sipariş sunucuda kabul edilir.
 - Mapbox v6 Ankara adres araması ve statik harita, yol süresi tahmini. Fiyat hesabı kuş uçuşu uzaklığa göre sunucuda yeniden yapılır. Motorlu araç yol süresi bilgilendirme içindir.
 - Supabase e-posta hesabı, aynı veriyi Android ve web'de kullanma, sunucu tarafından fiyatı tekrar hesaplanan sipariş, IBAN/dekont yükleme, gerçek banka işlem referansını isteyen manuel yönetici onayı.
-- Kurye başvurusu/onayı, müşteri adresini gizleyen ödeme onaylı iş havuzu, tek kurye tarafından atomik kabul, mağaza/ürün işaretleme, fiyat toleransı, uygulama açıkken konum paylaşımı, mesajlaşma ve olay akışı.
-- Ayrı `dbb_` tabloları ve RLS; özel `dbb_receipts` bucket. Diğer ortak Supabase tablolarına müdahale edilmez.
+- Kurye başvurusu/onayı, müşteri adresini gizleyen ödeme onaylı iş havuzu, tek kurye tarafından atomik kabul, mağaza/ürün işaretleme, mağaza fişini fotoğrafla yükleme, fiyat toleransı, uygulama açıkken konum paylaşımı, mesajlaşma ve olay akışı.
+- Teslimden sonra fişler ve kaydedilen gerçek fiyatları inceleyen yönetici mutabakatı; iade/ek ödeme için manuel banka işlem referansı. Müşteri fişleri ve fiyat farkını hesabından görür.
+- Ayrı `dbb_` tabloları ve RLS; özel `dbb_receipts` ve `dbb_shop_receipts` bucket'ları. Diğer ortak Supabase tablolarına müdahale edilmez.
 
 ## Canlı sipariş açma koşulları
 
@@ -61,7 +62,7 @@ Bu komutları örnek yer tutucularla çalıştırmayın. Fiyat kaynağı şu and
 - `src/dbb-api.ts`: Supabase ve Mapbox istemcileri. `EXPO_PUBLIC_*` değerleri herkese açıktır; gizli servis anahtarı burada bulunmaz.
 - `supabase/migrations/`: yalnızca `dbb_` uygulama nesneleri. İlk göçler bağlı Supabase projesine uygulanmıştır. Aynı projede tekrar çalıştırmayın.
 - Android ve web aynı Auth ve Supabase veritabanını kullanır. Aktif sepet cihazda saklanır; kayıtlı listeler, gerçek siparişler ve mesajlar sunucuda eşzamanlıdır.
-- Sonraki işler: güvenilir fiyat sağlayıcıları ve stok anlaşmaları; barkod ürün kataloğu genişletme; fotoğraf/sesle ürün tanıma; AI alışveriş önerileri; onaylı alternatif seçimi; fiş OCR ve iade mutabakatı; kampanyalar/fiyat geçmişi/bildirimler; gerçek kurye uygunluğu/konumuyla rota maliyeti; çok mağazalı sipariş yükleme performansı.
+- Sonraki işler: güvenilir fiyat sağlayıcıları ve stok anlaşmaları; barkod ürün kataloğu genişletme; fotoğraf/sesle ürün tanıma; AI alışveriş önerileri; müşterinin onaylayacağı alternatif ürün; fiş OCR ve otomatik satır eşleştirme; kampanyalar/fiyat geçmişi/bildirimler; gerçek kurye uygunluğu/konumuyla rota maliyeti; çok mağazalı sipariş yükleme performansı.
 
 ## Doğrulama
 
