@@ -1,10 +1,14 @@
-# DraBornBuy · Ankara pilotu
+# DraBornBuy v0.2 · Ankara pilotu
 
-Expo SDK 58 / Expo Go 58.0.0 ile Android ve web aynı kaynak kodunu kullanır. Ürün kataloğu otomatik yenilenir; siparişe açık fiyatlar, teslimat rotası, kurye ücreti, hizmet bedeli ve poşet bedeli tek sepet içinde hesaplanır. Fiziksel mağaza mevcudiyeti kesin şube verisi yoksa `unknown` tutulur ve kurye alışveriş sırasında teyit eder; uygulama bunu kesin stok olarak göstermemelidir.
+Android sürümü **0.2.0 / versionCode 1** olarak ayarlıdır. Geliştirme aşamasında APK üretilmez; testler Expo Go ile yapılır. Proje Expo SDK 58 `58.0.0-preview.8` ile hizalanmıştır ve Android ile web aynı kaynak kodunu kullanır.
 
-Android ve [web sürümü](https://www.draborneagle.com/DraBornBuy/) aynı Supabase projesiyle senkron çalışır. Oturum açan müşterinin etkin sepeti `dbb_baskets`, kayıtlı alışveriş listeleri `dbb_saved_lists`, siparişler ise `dbb_orders` üzerinden iki cihaz arasında eşitlenir.
+Ürün kataloğu otomatik yenilenir; siparişe açık fiyatlar, teslimat rotası, kurye ücreti, hizmet bedeli ve poşet bedeli tek sepet içinde hesaplanır. Fiziksel mağaza mevcudiyeti kesin şube verisi yoksa `unknown` tutulur ve kurye alışveriş sırasında teyit eder; uygulama bunu kesin stok olarak göstermez.
+
+Android ve [web sürümü](https://www.draborneagle.com/DraBornBuy/) aynı Supabase projesiyle senkron çalışır. Oturum açan müşterinin etkin sepeti `dbb_baskets`, kayıtlı alışveriş listeleri `dbb_saved_lists`, siparişler ise `dbb_orders` üzerinden cihazlar arasında eşitlenir.
 
 ## Termux kurulumu
+
+Temiz kurulum:
 
 ```bash
 pkg update -y
@@ -12,22 +16,27 @@ pkg install -y git nodejs-lts npm
 cd ~
 git clone https://github.com/DrabornEagle/DraBornBuy.git
 cd DraBornBuy
-cp .env.example .env
-nano .env
+cp -f .env.example .env
 npm ci --legacy-peer-deps
 npx expo start --lan --clear
 ```
 
-Önceden kurulduysa:
+Mevcut kurulumu v0.2'ye güncellemek için:
 
 ```bash
 cd ~/DraBornBuy
 git pull origin main
+cp -f .env.example .env
+rm -rf .expo
 npm ci --legacy-peer-deps
 npx expo start --lan --clear
 ```
 
-`.env` için Supabase publishable anahtarı yeterlidir. Mapbox public token üretim ortamında `public.dbb_config.dbb_mapbox_public_token` alanından çalışma anında yüklenir; böylece Android ve web aynı canlı harita yapılandırmasını kullanır. `service_role`, banka erişim bilgileri veya secret token uygulamaya konmaz.
+`.env.example` çalışır durumdaki **public Supabase URL + publishable key** değerlerini içerir; eski `PASTE_...` placeholder değerlerinin kalmaması için güncellemede `.env` üzerine yeniden kopyalanır. Uygulama ayrıca yanlış/boş yerel public anahtar algılarsa DraBornBuy'ın public Supabase yapılandırmasına güvenli fallback uygular. `service_role`, banka erişim bilgileri veya secret token uygulamaya ya da repoya konmaz.
+
+Mapbox public token üretim ortamında `public.dbb_config.dbb_mapbox_public_token` alanından çalışma anında yüklenir; Android ve web aynı canlı harita yapılandırmasını kullanır. Yerel `EXPO_PUBLIC_MAPBOX_TOKEN` boş kalabilir.
+
+Termux üzerinde React Native DevTools kurulurken görülebilen `Cannot read properties of undefined (reading 'arm64')` mesajı Metro bundle tamamlandığı sürece uygulamanın Android bundle'ını tek başına engellemez.
 
 ## Otomatik veri akışı
 
@@ -42,17 +51,23 @@ npx expo start --lan --clear
 
 Akış: müşteri hesabı → sepet → Ankara teslimat adresi → gerçek sipariş → IBAN/havale → dekont → ödeme kontrolü → kurye havuzu → alışveriş → teslimat → fiş/fiyat mutabakatı. Fiyat farkı izni ürün bazında kasadaki artışlar için kullanılır. Fiziksel mağaza mevcudiyeti `unknown` olan kalemlerde kurye mağazada ürünü teyit eder; bulunamazsa sipariş akışı bunu eksik ürün olarak işler.
 
-## Kullanıcı deneyimi
+## v0.2 istemci düzeltmeleri
 
-Ürün eklenince üst sepet sayacı, alt menü rozeti ve hızlı “Sepetim” çubuğu anında güncellenir. Bütçeli kahvaltılık planı ilk bulunan katalog kaydını körlemesine seçmez; siparişe açık teklifleri tarar, bütçeyi aşmayan en uygun alternatifleri kullanır ve ana ürün bulunamazsa siparişe açık kahvaltılık ürünlerle yedek sepet oluşturur.
+- Hatalı `.env` placeholder değerlerinden kaynaklanan **Invalid API key** problemi giderildi.
+- Eski demo sürümlerinden kalan UUID olmayan sepet kimlikleri otomatik ayıklanır; sonsuza kadar “Ürün yükleniyor” kartı gösterilmez.
+- Expo 58 paketleri preview.8 ile hizalandı; React Native, Expo Router, kamera, konum, image picker ve web paketleri uyumlu sürümlere güncellendi.
+- TypeScript 6 ve Node test tipleri etkinleştirildi; CI `npm run check` ile tip kontrolü ve testleri çalıştırır.
+- Ana ekran, kartlar, arama alanı ve aksiyon düğmeleri daha renkli premium market temasına geçirildi; hero alanına hafif hareket/pulse animasyonları eklendi.
+- Ürün eklenince üst sepet sayacı, alt menü rozeti ve hızlı “Sepetim” çubuğu anında güncellenir.
 
-Arama, barkod tarama, ürün linkinden arama, kayıtlı listeler, çok mağazalı optimizasyon, tek mağaza karşılaştırması, Mapbox adres/rota tahmini, ödeme dekontu, manuel banka kontrolü, kurye görevleri, fiş mutabakatı, mesajlaşma ve sipariş olayları kodlanmıştır.
+Arama, barkod tarama, ürün linkinden arama, kayıtlı listeler, çok mağazalı optimizasyon, tek mağaza karşılaştırması, Mapbox adres/rota tahmini, bütçeli kahvaltılık planı, ödeme dekontu, manuel banka kontrolü, kurye görevleri, fiş mutabakatı, mesajlaşma ve sipariş olayları kodlanmıştır.
 
 Supabase şeması `dbb_` öneki ve RLS ile aynı projedeki diğer uygulamalardan ayrı tutulur. Migration dosyaları `supabase/migrations/` içindedir.
 
 ## Doğrulama
 
 ```bash
+npx expo install --check
 npm run check
 npm run export:web
 ```
