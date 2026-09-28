@@ -26,6 +26,7 @@ const dbb_center = { dbb_lat: 39.92077, dbb_lon: 32.85411 };
 function dbb_safe_basket(dbb_value:unknown):Dbb_BasketItem[] {
   if (!Array.isArray(dbb_value)) return [];
   return dbb_value.filter(dbb_item=>dbb_item&&typeof dbb_item.dbb_product_id==='string'&&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(dbb_item.dbb_product_id)&&
     Number.isInteger(dbb_item.dbb_quantity)&&dbb_item.dbb_quantity>0).slice(0,60)
     .map(dbb_item=>({dbb_product_id:dbb_item.dbb_product_id,dbb_quantity:Math.min(20,dbb_item.dbb_quantity)}));
 }
