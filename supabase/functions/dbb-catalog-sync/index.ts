@@ -43,7 +43,7 @@ export function dbb_parse_detail(html: string, sourceUrl: string) {
     dbb_category:category,dbb_image_url:image,dbb_source_url:sourceUrl,
     dbb_source_merchant:'Altunbilekler',dbb_last_seen_at:now,dbb_active:true,
     ...(barcode && /^\d{8,14}$/.test(barcode) ? {dbb_barcode:barcode}:{}),
-    dbb_catalog_price_kurus:Number.isFinite(price) && price > 0 ? Math.round(price*100) : null,
+    dbb_catalog_price_kurus:onlineInStock && Number.isFinite(price) && price > 0 ? Math.round(price*100) : null,
     dbb_catalog_in_stock:onlineInStock,dbb_catalog_checked_at:now};
 }
 
