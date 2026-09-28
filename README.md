@@ -33,10 +33,10 @@ Web yayınındaki `/DraBornBuy` alt yolunu Expo `experiments.baseUrl` ayarlar. `
 
 ## Otomatik veri akışı
 
-- `dbb-catalog-sync` Edge Function, Altunbilekler'in yayımlanan ürün sitemap'ini 24 ürünlük gruplarla her beş dakikada bir dolaşır. Görsel, kaynak adresi, barkod (varsa), ürün adı, çevrimiçi referans fiyatı ve çevrimiçi stok işaretini `dbb_products` içine kaydeder. İşlem günlüğü `dbb_sync_runs`, kalıcı ilerleme `dbb_catalog_cursor` içindedir. Kaynak değişirse tarama başarısız olur ve yönetici durumunu görür; otomatik ağ bağlantısı veya veri doğruluğu garantisi yoktur.
+- `dbb-catalog-sync` Edge Function, Altunbilekler'in yayımlanan ürün sitemap'ini 24 ürünlük gruplarla her beş dakikada bir dolaşır. Görsel, kaynak adresi, barkod (varsa), ürün adı ve çevrimiçi stok işaretini `dbb_products` içine kaydeder. Kaynak sayfasında çevrimiçi stok sıfırsa eski fiyat alanı temizlenir; sadece stoklu ürünün fiyatı referans olarak görünür. İşlem günlüğü `dbb_sync_runs`, kalıcı ilerleme `dbb_catalog_cursor` içindedir. Kaynak değişirse tarama başarısız olur ve yönetici durumunu görür; otomatik ağ bağlantısı veya veri doğruluğu garantisi yoktur.
 - Katalog dinamik büyür; başlangıç ekranı toplam sayıyı gösterir, arama bütün ürünlerde çalışır ve liste sayfalar halinde yüklenir. A101, BİM, Migros, CarrefourSA, ŞOK ve Yunus Market'in doğrulanmış şube verisi bu taramadan gelmez. Zincir adı veya ürün fotoğrafı, o markette mevcut şube fiyatı/stok kanıtı değildir.
 - Perakendecinin beyaz fonlu JPEG fotoğrafı şeffaf PNG gibi gösterilmez. Kaynağın gerçek alfa kanallı Nutella ambalaj görseli kullanılır; diğerleri etiket/ambalaj doğruluğu korunarak nötr ürün alanlarında sunulur. Tüm ürünler için özgün şeffaf görsel kaynağı mevcut değildir.
-- Sepette teklif yoksa çevrimiçi ürün toplamı yalnızca bütün kalemlerin fiyatı bulunduğunda **taslak referans** olarak görünür. Kurye, hizmet ve poşet ücreti bu tutara dahil değildir. Bütçeli kahvaltılık düğmesi çevrimiçi kaynaklı bir taslak çıkarabilir ve teslimat bütçesini garanti etmediğini açıklar.
+- Sepette teklif yoksa çevrimiçi ürün toplamı yalnızca bütün kalemler son 24 saatte stoklu ve fiyatlı olarak görüldüğünde **taslak referans** olarak görünür. Kurye, hizmet ve poşet ücreti bu tutara dahil değildir. Bütçeli kahvaltılık düğmesi böyle kaynaklar varsa taslak çıkarır; bulunmazsa açık geri bildirim verir.
 
 ## Sipariş uygunluğu
 

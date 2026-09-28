@@ -29,6 +29,12 @@ function dbb_safe_basket(dbb_value:unknown):Dbb_BasketItem[] {
     Number.isInteger(dbb_item.dbb_quantity)&&dbb_item.dbb_quantity>0).slice(0,60)
     .map(dbb_item=>({dbb_product_id:dbb_item.dbb_product_id,dbb_quantity:Math.min(20,dbb_item.dbb_quantity)}));
 }
+function dbb_online_price(dbb_product:Dbb_Product | undefined):number | null {
+  if (!dbb_product?.dbb_catalog_in_stock || !dbb_product.dbb_catalog_price_kurus ||
+      !dbb_product.dbb_catalog_checked_at) return null;
+  const dbb_age=Date.now()-new Date(dbb_product.dbb_catalog_checked_at).getTime();
+  return dbb_age>=0 && dbb_age<24*60*60*1000 ? dbb_product.dbb_catalog_price_kurus : null;
+}
 const dbb_shelf_colors: Record<string,{background:string;border:string;accent:string;soft:string}> = {
   'Kahvaltılık': {background:'#FFF7E8',border:'#F7DB9D',accent:'#A15A11',soft:'#FFE8B5'},
   'İçecek': {background:'#EAF6FF',border:'#BBDDF5',accent:'#185E91',soft:'#D2EBFC'},
@@ -232,8 +238,9 @@ export default function Dbb_App() {
     let dbb_total=0;
     for (const dbb_item of dbb_basket) {
       const dbb_product=dbb_products.find(dbb_found=>dbb_found.dbb_id===dbb_item.dbb_product_id);
-      if (!dbb_product?.dbb_catalog_price_kurus) return null;
-      dbb_total+=dbb_product.dbb_catalog_price_kurus*dbb_item.dbb_quantity;
+      const dbb_price=dbb_online_price(dbb_product);
+      if (!dbb_price) return null;
+      dbb_total+=dbb_price*dbb_item.dbb_quantity;
     }
     return dbb_total;
   },[dbb_basket,dbb_products]);
@@ -334,10 +341,13 @@ export default function Dbb_App() {
         const dbb_selected:Dbb_Product[]=[];
         let dbb_running=0;
         for (const dbb_kind of dbb_kinds) {
-          const dbb_product=dbb_catalog.find(dbb_item=>dbb_kind.test.test(dbb_item.dbb_name.toLocaleLowerCase('tr-TR')) &&
-            dbb_running+(dbb_item.dbb_catalog_price_kurus||0)<=dbb_limit);
+          const dbb_product=dbb_catalog.find(dbb_item=>{
+            const dbb_price=dbb_online_price(dbb_item);
+            return dbb_price!==null && dbb_kind.test.test(dbb_item.dbb_name.toLocaleLowerCase('tr-TR')) &&
+              dbb_running+dbb_price<=dbb_limit;
+          });
           if (!dbb_product) continue;
-          dbb_selected.push(dbb_product);dbb_running+=dbb_product.dbb_catalog_price_kurus||0;
+          dbb_selected.push(dbb_product);dbb_running+=dbb_online_price(dbb_product)!;
         }
         if (dbb_selected.length) {
           dbb_set_products(dbb_old=>[...dbb_old,...dbb_selected.filter(dbb_product=>!dbb_old.some(dbb_item=>dbb_item.dbb_id===dbb_product.dbb_id))]);
@@ -350,7 +360,7 @@ export default function Dbb_App() {
       finally {dbb_set_pending(false);}
     }
     if (!dbb_list.length) {
-      dbb_set_breakfast_feedback('Bu bütçe için stoklu kahvaltılık bulunamadı. Kaynak güncellendiğinde tekrar dene.');return;
+      dbb_set_breakfast_feedback('Bu bütçe için güncel stoklu kahvaltılık bulunamadı. Kaynak güncellendiğinde tekrar dene.');return;
     }
     dbb_set_breakfast_feedback(''); dbb_change_basket(dbb_list); dbb_set_tab('basket'); dbb_set_notice(`${dbb_list.length} kahvaltılık bütçene göre seçildi; istediğin ürünleri değiştirebilirsin.`);
   };
@@ -359,6 +369,7 @@ export default function Dbb_App() {
     const dbb_choices = dbb_offers.filter(dbb_offer => dbb_offer.dbb_product_id === dbb_product.dbb_id).sort((dbb_a, dbb_b) => dbb_a.dbb_price_kurus - dbb_b.dbb_price_kurus);
     const dbb_product_quote = dbb_optimize([{ dbb_product_id: dbb_product.dbb_id, dbb_quantity: 1 }], dbb_choices, dbb_location, dbb_config).dbb_best;
     const dbb_quantity = dbb_basket.find(dbb_item => dbb_item.dbb_product_id === dbb_product.dbb_id)?.dbb_quantity || 0;
+    const dbb_online=dbb_online_price(dbb_product);
     const dbb_palette=dbb_shelf_colors[dbb_product.dbb_category]||dbb_shelf_colors.Market;
     return <Dbb_Card key={dbb_product.dbb_id} dbb_style={{ gap: 12, backgroundColor:dbb_palette.background,borderColor:dbb_palette.border,padding:14 }}>
       <View style={{flexDirection:'row',gap:13,alignItems:'center'}}>
@@ -378,8 +389,8 @@ export default function Dbb_App() {
       <View style={{height:1,backgroundColor:dbb_palette.border}} />
       <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10}}>
         <View style={{flex:1,gap:2}}>
-          <Text style={{color:'#5B7067',fontWeight:'700',fontSize:11}}>{dbb_choices.length?'EN UYGUN ŞUBE FİYATI':'ÇEVRİMİÇİ KAYNAK FİYATI'}</Text>
-          <Text style={{color:'#123D31',fontWeight:'900',fontSize:23,fontVariant:['tabular-nums']}}>{dbb_choices.length?dbb_lira(dbb_choices[0].dbb_price_kurus):dbb_product.dbb_catalog_price_kurus?dbb_lira(dbb_product.dbb_catalog_price_kurus):'Fiyat yok'}</Text>
+          <Text style={{color:'#5B7067',fontWeight:'700',fontSize:11}}>{dbb_choices.length?'EN UYGUN ŞUBE FİYATI':dbb_online?'ÇEVRİMİÇİ KAYNAK FİYATI':'ÇEVRİMİÇİ DURUM'}</Text>
+          <Text style={{color:'#123D31',fontWeight:'900',fontSize:23,fontVariant:['tabular-nums']}}>{dbb_choices.length?dbb_lira(dbb_choices[0].dbb_price_kurus):dbb_online?dbb_lira(dbb_online):dbb_product.dbb_catalog_in_stock===false?'Çevrimiçi stok yok':'Fiyat izleniyor'}</Text>
           {dbb_choices.length?<Text style={{color:'#60736B',fontSize:11}}>Teslim dahil {dbb_product_quote?dbb_lira(dbb_product_quote.dbb_total):'—'}</Text>:
             <Text style={{color:'#60736B',fontSize:11}}>{dbb_product.dbb_source_merchant || 'Ürün kaynağı'} · {dbb_product.dbb_catalog_checked_at?new Date(dbb_product.dbb_catalog_checked_at).toLocaleDateString('tr-TR'):'katalog kaydı'}</Text>}
         </View>
@@ -412,7 +423,7 @@ export default function Dbb_App() {
           <View style={{height:115,borderRadius:17,backgroundColor:['#FFF0D8','#CFF0DE','#DDE6FF','#FFDDD5'][dbb_index%4],alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
             {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:105,height:105}} resizeMode="contain" />:<Ionicons name="cube-outline" size={39} color={dbb_theme.purple} />}</View>
           <Text numberOfLines={2} style={{color:'#17382E',fontWeight:'900',fontSize:12,minHeight:35}}>{dbb_product.dbb_name}</Text>
-          <Text style={{color:'#48665C',fontSize:11,fontWeight:'700'}}>{dbb_product.dbb_catalog_price_kurus?dbb_lira(dbb_product.dbb_catalog_price_kurus):dbb_product.dbb_size || dbb_product.dbb_brand}</Text>
+          <Text style={{color:'#48665C',fontSize:11,fontWeight:'700'}}>{dbb_online_price(dbb_product)?dbb_lira(dbb_online_price(dbb_product)!):dbb_product.dbb_size || dbb_product.dbb_brand}</Text>
         </Pressable>)}
       </ScrollView>
     </Dbb_Section>
@@ -492,9 +503,10 @@ export default function Dbb_App() {
       {dbb_basket.map(dbb_item => {
         const dbb_product = dbb_products.find(dbb_found => dbb_found.dbb_id === dbb_item.dbb_product_id);
         const dbb_lowest = dbb_offers.filter(dbb_offer => dbb_offer.dbb_product_id === dbb_item.dbb_product_id).sort((dbb_a,dbb_b) => dbb_a.dbb_price_kurus - dbb_b.dbb_price_kurus)[0];
+        const dbb_online=dbb_online_price(dbb_product);
         return <Dbb_Card key={dbb_item.dbb_product_id} dbb_style={{ flexDirection: 'row', alignItems: 'center',backgroundColor:'#F6FAF0',borderColor:'#D7E8CE',padding:13 }}>
           {dbb_product?.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:53,height:53,borderRadius:10,backgroundColor:'#E5F4DC'}} resizeMode="contain" />:<Ionicons name="cube-outline" size={28} color="#338768" />}
-          <View style={{ flex: 1,gap:2 }}><Text style={{color:'#19382F',fontSize:13,fontWeight:'900'}} numberOfLines={2}>{dbb_product?.dbb_name||'Ürün yükleniyor'}</Text><Text style={{color:'#637C70',fontSize:11}}>{dbb_product?.dbb_size} · {dbb_lowest?dbb_lira(dbb_lowest.dbb_price_kurus):dbb_product?.dbb_catalog_price_kurus?dbb_lira(dbb_product.dbb_catalog_price_kurus):'Fiyat yok'}</Text></View>
+          <View style={{ flex: 1,gap:2 }}><Text style={{color:'#19382F',fontSize:13,fontWeight:'900'}} numberOfLines={2}>{dbb_product?.dbb_name||'Ürün yükleniyor'}</Text><Text style={{color:'#637C70',fontSize:11}}>{dbb_product?.dbb_size} · {dbb_lowest?dbb_lira(dbb_lowest.dbb_price_kurus):dbb_online?dbb_lira(dbb_online):'Güncel fiyat yok'}</Text></View>
           <Pressable onPress={() => dbb_add(dbb_item.dbb_product_id,-1)} accessibilityRole="button" accessibilityLabel={`${dbb_product?.dbb_name||'Ürün'} azalt`}><Ionicons name="remove-circle" size={27} color="#81A695" /></Pressable>
           <Text style={{ color: '#19382F', fontWeight: '900',fontVariant:['tabular-nums'] }}>{dbb_item.dbb_quantity}</Text>
           <Pressable onPress={() => dbb_add(dbb_item.dbb_product_id,1)} accessibilityRole="button" accessibilityLabel={`${dbb_product?.dbb_name||'Ürün'} artır`}><Ionicons name="add-circle" size={27} color="#158764" /></Pressable>

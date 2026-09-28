@@ -63,7 +63,9 @@ export async function dbb_search_catalog(dbb_query:string,dbb_category='Tümü',
 export async function dbb_breakfast_catalog():Promise<Dbb_Product[]> {
   if (!dbb_client) return [];
   const {data,error}=await dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true)
-    .eq('dbb_category','Kahvaltılık').not('dbb_catalog_price_kurus','is',null)
+    .eq('dbb_category','Kahvaltılık').eq('dbb_catalog_in_stock',true)
+    .gte('dbb_catalog_checked_at',new Date(Date.now()-24*60*60*1000).toISOString())
+    .not('dbb_catalog_price_kurus','is',null)
     .order('dbb_catalog_price_kurus',{ascending:true}).limit(200);
   if (error) throw error;
   return data as Dbb_Product[];
