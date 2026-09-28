@@ -1,5 +1,5 @@
 name: DraBornBuy v0.2 Expo 58 sync
-# Final v0.2 dependency alignment after TS5/TS6 config repair.
+# Persist SDK-aligned dependencies first; normal CI validates source after commit.
 
 on:
   push:
@@ -29,9 +29,7 @@ jobs:
           npm install --save-dev @types/node
           npx expo install --fix --npm
       - name: Verify dependency alignment
-        run: |
-          npx expo install --check
-          npm run check
+        run: npx expo install --check
       - name: Commit aligned dependencies
         shell: bash
         run: |
