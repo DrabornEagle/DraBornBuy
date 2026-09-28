@@ -1,6 +1,6 @@
-# DraBornBuy v0.3 · Ankara market
+# DraBornBuy v0.4 · Ankara market
 
-Expo SDK 58 uygulaması Android **version 0.3.0 / versionCode 1** kullanır. APK üretilmez; Android testleri Expo Go 58 ile yapılır. Aynı Expo kaynak kodu [web sürümüne](https://www.draborneagle.com/DraBornBuy/) aktarılır. Oturum, sepet ve sipariş verileri ayrı `dbb_` Supabase tablolarında tutulur.
+Expo SDK 58 uygulaması Android **version 0.4.0 / versionCode 1** kullanır. APK üretilmez; Android testleri Expo Go 58 ile yapılır. Aynı Expo kaynak kodu [web sürümüne](https://www.draborneagle.com/DraBornBuy/) aktarılır. Oturum, sepet ve sipariş verileri ayrı `dbb_` Supabase tablolarında tutulur.
 
 ## Kurulum · Termux
 
@@ -27,22 +27,31 @@ npx expo start --lan --clear
 
 `.env.example` yalnızca public Supabase URL ve publishable key içerir. Public Mapbox token, uygulama açıldığında `dbb_config.dbb_mapbox_public_token` alanından yüklenir. Hizmet rolü veya banka erişim sırrı mobil uygulamaya konmaz. Termux üzerinde React Native DevTools kurulurken görülen `arm64` uyarısı, Metro Android bundle tamamlanıyorsa Expo Go'nun açılmasını engellemez.
 
-## Fiyatın anlamı
+## v0.4 stok kuralı
 
-- Katalogdaki ürün adı, görseli, kaynak URL'si, çevrimiçi fiyatı ve kaynak stok durumu birbirinden ayrı veridir. Kaynak sayfasında görünen tutar, kasada veya Ankara şubesinde alınacak fiyat değildir. Kaynak stok göstermiyorsa ekranda açıkça “çevrimiçi stok yok” denir.
-- Ana ekranda önce çevrimiçi stoğu ve son 24 saatte gözlenmiş fiyatı olan ürünler görünür. Aramada son görülen fiyat, çevrimiçi stok yokken de **referans** olarak gösterilebilir; ödeme toplamı sayılmaz.
-- Sipariş hesabına yalnızca `dbb_availability='confirmed'`, doğrulanmış, stoklu ve süresi geçmemiş **şube teklifleri** girer. Katalog taramasının otomatik yazdığı eski `catalog` teklifleri siparişten ayrılmıştır. Sunucu aynı koşulu ödeme öncesinde tekrar denetler.
-- Mevcut katalog tarayıcısı bir kaynaktan küçük partiler alır; binlerce ürünün hepsinin anlık veya şube bazında doğrulanmış fiyatı olduğu iddia edilmez. A101, BİM, Migros, CarrefourSA ve başka marketlerin şube fiyatlarını otomatik doğrulayacak yetkili veri bağlantısı henüz bulunmuyor.
+- Müşteri kataloğu artık yalnızca `dbb_catalog_in_stock=true`, pozitif güncel fiyatı bulunan ve son 24 saat içinde kontrol edilmiş ürünleri gösterir.
+- Kaynak stok dışı işaretlerse katalog fiyatı `null` yapılır ve ürün müşteri aramasından/ana sayfadan çıkar. Eski sepet veya kayıtlı listede kalan stok dışı ürünler yeniden açılırken otomatik elenir.
+- “Çevrimiçi stok yok, siparişe açık değil” şeklinde stok dışı ürün kartı gösterilmez. Arama sonuçlarında stok dışı kayıtların görünmesine izin verilmez.
+- Sipariş hesabına yalnızca `dbb_availability='confirmed'`, doğrulanmış, stoklu ve süresi geçmemiş **fiziksel şube teklifleri** girer. Çevrimiçi katalog stoğu fiziksel Ankara şubesi stoğu gibi gösterilmez.
+- Sunucu ödeme/sipariş oluşturma anında aynı şube doğrulamasını tekrar yapar. Bu güvenlik kuralı istemci tarafından atlanamaz.
 
-Bu nedenle gerçek sipariş/FAST ödemesi, Ankara şubesi için kullanılabilir veri bağlantısı ve doğrulanmış fiyat ile stok bulunana kadar kapalı kalır. Bu durum müşteri ekranında açıkça anlatılır. `dbb_requested_enabled` açılış isteğini saklar; hazır şube teklifleri ve kurye oluştuğunda hazır olma kontrolü çalışır. Katalog fiyatını siparişe dönüştürmek bu koşulu karşılamaz.
+## Market kaynakları
 
-## v0.3
+v0.4 veri modeli birden fazla market kaynağını destekler; ancak müşteri ekranında yalnızca gerçekten bağlı ve güncel stok verisi üreten kaynaklar gösterilir. Şu anda otomatik canlı katalog tarayıcısı Altunbilekler kaynağı için aktiftir. A101, BİM, ŞOK, Migros, CarrefourSA, Yunus ve diğer zincirler veri modeli/aday listesinde bulunsa da doğrulanmış resmi veya güvenilir canlı veri bağlantısı kurulmadan bu marketler için stok uydurulmaz.
 
-- Açık zeminli indigo, mor, mercan ve sarı market teması; hareketsiz, daha kısa arama alanı ve fiyatı öne çıkaran ürün kartları.
-- Ürün eklenince sepet rozeti, adet ve hızlı sepet çubuğu güncellenir.
-- Kahvaltılık planı ürün adlarını ayrı ayrı eşleştirir; doğrulanmış teklifler varsa teslimat dahil bütçe hesabı yapar, yoksa düzenlenebilir bir taslak oluşturur ve bütçenin doğrulanamadığını açıklar.
-- Mapbox'un public token'ı Android ve web için aynı `dbb_config` kaydından okunur.
-- Katalog fiyatı ile sipariş teklifi arasındaki sunucu ayrımı sıkılaştırıldı. Ödeme için katalog tahminine dayanılmaz.
+Her yeni market adaptörü aynı sözleşmeye uymalıdır: ürün kimliği, kaynak URL'si, fiyat, stok durumu, kontrol zamanı ve mümkün olduğunda şube bazlı doğrulanmış teklif. Böylece “bütün marketler” kapsamı genişlerken yanlış stok veya sahte şube fiyatı müşteriye gösterilmez.
+
+## v0.4 arayüz
+
+- Tasarım sıfırdan Miami market yönüne taşındı: turkuaz/aqua, mercan, gün batımı sarısı, pembe ve koyu lacivert vurgular.
+- Yeni gradient hero, kategori rafları, canlı stok sayaçları, renk kodlu ürün kartları ve modern sepet çubuğu eklendi.
+- Ürün kartlarında yalnızca “Canlı çevrimiçi stok” veya gerçek teklif varsa “Doğrulanmış şube stoku” durumu gösterilir.
+- Sepette eski “Teslimat hesabı şu anda sunulamıyor” mesajı kaldırıldı. Fiziksel şube teklifi yoksa ürünlerin stokta olduğu fakat şube eşleşmesinin beklendiği açıkça belirtilir.
+- Header ve hesap ekranı `v0.4 · MIAMI` olarak güncellendi.
+
+## Gerçek sipariş neden ayrı?
+
+Çevrimiçi mağazada bir ürünün stokta görünmesi, Ankara'daki belirli fiziksel şubede o anda aynı ürünün ve fiyatın bulunduğunu kanıtlamaz. Bu nedenle gerçek sipariş/FAST ödemesi yalnızca şube bazlı doğrulanmış teklif olduğunda açılır. `dbb_requested_enabled` açılış isteğini saklar; hazır şube teklifleri ve kurye oluştuğunda hazır olma kontrolü çalışır. Katalog fiyatını doğrudan sipariş teklifine dönüştürmek bu koşulu karşılamaz.
 
 ## Kontrol
 
