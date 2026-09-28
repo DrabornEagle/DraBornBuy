@@ -1,8 +1,8 @@
 # DraBornBuy · Ankara pilotu
 
-Expo SDK 58 / Expo Go 58.0.0 Android ve web uygulaması. Ürün kataloğu ve çevrimiçi referans fiyatları otomatik yenilenir. Sepet optimizasyonu, yalnızca Ankara'da fiyatı ve stoğu doğrulanmış şube teklifleriyle teslimat dahil hesap yapar.
+Expo SDK 58 / Expo Go 58.0.0 ile Android ve web aynı kaynak kodunu kullanır. Ürün kataloğu otomatik yenilenir; siparişe açık fiyatlar, teslimat rotası, kurye ücreti, hizmet bedeli ve poşet bedeli tek sepet içinde hesaplanır. Fiziksel mağaza mevcudiyeti kesin şube verisi yoksa `unknown` tutulur ve kurye alışveriş sırasında teyit eder; uygulama bunu kesin stok olarak göstermemelidir.
 
-Android ve [web sürümü](https://www.draborneagle.com/DraBornBuy/) aynı Expo kaynak kodunu ve Supabase projesini kullanır. Oturum açan müşterinin etkin sepeti `dbb_baskets` ile iki cihaz arasında, kayıtlı alışveriş listeleri ise `dbb_saved_lists` ile eşitlenir. Giriş yapılmadan oluşturulan sepet yalnızca cihazda kalır ve girişte mevcut hesap sepetiyle birleştirilir.
+Android ve [web sürümü](https://www.draborneagle.com/DraBornBuy/) aynı Supabase projesiyle senkron çalışır. Oturum açan müşterinin etkin sepeti `dbb_baskets`, kayıtlı alışveriş listeleri `dbb_saved_lists`, siparişler ise `dbb_orders` üzerinden iki cihaz arasında eşitlenir.
 
 ## Termux kurulumu
 
@@ -27,26 +27,26 @@ npm ci --legacy-peer-deps
 npx expo start --lan --clear
 ```
 
-`.env` dosyasına Supabase **publishable** anahtarını ve Mapbox **public** token'ını koy. `service_role`/secret anahtarı uygulamaya veya GitHub'a konmaz. `.env` git dışında tutulur. Termux ve Expo Go aynı ağdayken Metro'nun `exp://` adresini Expo Go'da aç. APK oluşturulmaz. Termux'ta React Native DevTools için `arm64` uyarısı görülebilir; `Android Bundled` tamamlanıyorsa bu tek başına Metro derlemesini engellemez.
-
-Web yayınındaki `/DraBornBuy` alt yolunu Expo `experiments.baseUrl` ayarlar. `.env.production` yalnızca tarayıcıda zaten görünen Supabase URL ve publishable anahtarını içerir. Web yayını için Mapbox public token'ı GitHub Actions `DBB_MAPBOX_TOKEN` değişkeni ile ayrıca sağlanır; değişken yoksa harita/adres araması kullanılamaz. Sunucu veya banka sırları burada bulunmaz. `DrabornEagle_Web` deposunun Pages iş akışı ana depodan web çıktısını üretir.
+`.env` için Supabase publishable anahtarı yeterlidir. Mapbox public token üretim ortamında `public.dbb_config.dbb_mapbox_public_token` alanından çalışma anında yüklenir; böylece Android ve web aynı canlı harita yapılandırmasını kullanır. `service_role`, banka erişim bilgileri veya secret token uygulamaya konmaz.
 
 ## Otomatik veri akışı
 
-- `dbb-catalog-sync` Edge Function, Altunbilekler'in yayımlanan ürün sitemap'ini 24 ürünlük gruplarla her beş dakikada bir dolaşır. Görsel, kaynak adresi, barkod (varsa), ürün adı ve çevrimiçi stok işaretini `dbb_products` içine kaydeder. Kaynak sayfasında çevrimiçi stok sıfırsa eski fiyat alanı temizlenir; sadece stoklu ürünün fiyatı referans olarak görünür. İşlem günlüğü `dbb_sync_runs`, kalıcı ilerleme `dbb_catalog_cursor` içindedir. Kaynak değişirse tarama başarısız olur ve yönetici durumunu görür; otomatik ağ bağlantısı veya veri doğruluğu garantisi yoktur.
-- Katalog dinamik büyür; başlangıç ekranı toplam sayıyı gösterir, arama bütün ürünlerde çalışır ve liste sayfalar halinde yüklenir. A101, BİM, Migros, CarrefourSA, ŞOK ve Yunus Market'in doğrulanmış şube verisi bu taramadan gelmez. Zincir adı veya ürün fotoğrafı, o markette mevcut şube fiyatı/stok kanıtı değildir.
-- Perakendecinin beyaz fonlu JPEG fotoğrafı şeffaf PNG gibi gösterilmez. Kaynağın gerçek alfa kanallı Nutella ambalaj görseli kullanılır; diğerleri etiket/ambalaj doğruluğu korunarak nötr ürün alanlarında sunulur. Tüm ürünler için özgün şeffaf görsel kaynağı mevcut değildir.
-- Sepette teklif yoksa çevrimiçi ürün toplamı yalnızca bütün kalemler son 24 saatte stoklu ve fiyatlı olarak görüldüğünde **taslak referans** olarak görünür; diğer durumda toplam hesaplanmaz. Kurye, hizmet ve poşet ücreti bu tutara dahil değildir. Bütçeli kahvaltılık düğmesi böyle kaynaklar varsa taslak çıkarır; bulunmazsa açık geri bildirim verir.
+- `dbb-catalog-sync` Edge Function yayımlanan ürün kataloğunu küçük gruplar halinde tarar ve `dbb_products` içindeki ürün adı, görsel, barkod, kaynak adresi, çevrimiçi fiyat ve katalog durumunu yeniler.
+- Katalog senkronu ve `dbb_refresh_catalog_procurement_offers()` işi dakikalık çalışır. Güncel, siparişe uygun katalog fiyatları `dbb_offers` içine `dbb_source='catalog'` ve `dbb_availability='unknown'` olarak taşınabilir. Bu kayıt fiziksel şube stoğu iddiası değildir; kuryenin mağazada teyit edeceği satın alma tahminidir.
+- Kesin mağaza verisi geldiğinde teklif `dbb_availability='confirmed'` olarak tutulabilir. `unavailable` teklifler kullanıcıya ve optimizasyona girmez.
+- A101, BİM, Migros, CarrefourSA, ŞOK ve Yunus Market gibi zincirler için yalnızca güvenilir, şubeye özgü veri kaynağı bulunduğunda aynı akışa eklenmelidir; katalog veya görsel tek başına kesin şube stoğu sayılmaz.
 
-## Sipariş uygunluğu
+## Gerçek sipariş akışı
 
-Yönetici `draborneagle@gmail.com` hesabı `dbb_admins` ile yetkilidir. Hesap ekranında IBAN, banka adı, işletme hesap sahibi ve ücretler düzenlenir; kaydetme sonucu panelde gösterilir. Sipariş açma isteği `dbb_requested_enabled` içinde kalıcıdır. `dbb_readiness_every_5m` işi işletme banka hesabı, aktif Ankara şubesi, geçerli stoklu doğrulanmış şube teklifi ve onaylı kurye bulunduğunda `dbb_enabled` durumunu yeniden hesaplar. Teklif süresi dolduğunda sipariş yeniden kapanır.
+`dbb_requested_enabled` işletmenin sipariş açma isteğini saklar. `dbb_enabled` banka hesabı, aktif satın alma noktası, güncel siparişe açık fiyat ve onaylı kurye hazır olduğunda otomatik açılır. Kullanıcı sepetten sipariş oluşturduğunda toplam sunucuda yeniden hesaplanır; istemci toplamı güven kaynağı değildir.
 
-Çevrimiçi fiyat/stok yalnızca referanstır; Ankara şube stoğu diye `dbb_offers` içine kopyalanmaz. **Şu an şube teklifleri ve aktif şubeler sıfır; gerçek siparişler kapalıdır.** İşletme hesabı kaydedilmiş olsa bile kullanıcıya ödeyemeyeceği veya kuryenin alamayacağı bir sipariş sunulmaz. A101, BİM ve diğer zincirlerde otomatik gerçek sipariş için yetkili, şubeye özgü güvenilir fiyat/stok bağlantısı gerekir. Bu kaynak olmadan uygulama kendi kendine kesin şube stoğu üretemez.
+Akış: müşteri hesabı → sepet → Ankara teslimat adresi → gerçek sipariş → IBAN/havale → dekont → ödeme kontrolü → kurye havuzu → alışveriş → teslimat → fiş/fiyat mutabakatı. Fiyat farkı izni ürün bazında kasadaki artışlar için kullanılır. Fiziksel mağaza mevcudiyeti `unknown` olan kalemlerde kurye mağazada ürünü teyit eder; bulunamazsa sipariş akışı bunu eksik ürün olarak işler.
 
-## Mevcut işlevler
+## Kullanıcı deneyimi
 
-Arama ve barkod tarama, ürün linkindeki kelimelerle arama, taslak sepet ve kayıtlı listeler, uygun tekliflerde çok mağazalı optimizasyon ve tek mağaza karşılaştırması, Mapbox adres/rota tahmini, bütçeli kahvaltılık taslağı, hesap, ödeme dekontu, manuel banka kontrolü, kurye görevleri, fiş mutabakatı, mesajlaşma ve sipariş olayları kodlanmıştır. Fotoğraf/ses tanıma, AI sohbet, fiş OCR, otomatik banka doğrulama, tüm zincirler için canlı stok, kampanya ve fiyat geçmişi gerçek servislerle bağlı değildir.
+Ürün eklenince üst sepet sayacı, alt menü rozeti ve hızlı “Sepetim” çubuğu anında güncellenir. Bütçeli kahvaltılık planı ilk bulunan katalog kaydını körlemesine seçmez; siparişe açık teklifleri tarar, bütçeyi aşmayan en uygun alternatifleri kullanır ve ana ürün bulunamazsa siparişe açık kahvaltılık ürünlerle yedek sepet oluşturur.
+
+Arama, barkod tarama, ürün linkinden arama, kayıtlı listeler, çok mağazalı optimizasyon, tek mağaza karşılaştırması, Mapbox adres/rota tahmini, ödeme dekontu, manuel banka kontrolü, kurye görevleri, fiş mutabakatı, mesajlaşma ve sipariş olayları kodlanmıştır.
 
 Supabase şeması `dbb_` öneki ve RLS ile aynı projedeki diğer uygulamalardan ayrı tutulur. Migration dosyaları `supabase/migrations/` içindedir.
 
@@ -54,7 +54,7 @@ Supabase şeması `dbb_` öneki ve RLS ile aynı projedeki diğer uygulamalardan
 
 ```bash
 npm run check
-EXPO_OFFLINE=1 npx expo install --check
-EXPO_OFFLINE=1 npx expo export --platform android
 npm run export:web
 ```
+
+`main` dalındaki her değişiklikte GitHub Actions TypeScript ve test paketini çalıştırır. `DrabornEagle_Web` Pages iş akışı da aynı kaynaktan `/DraBornBuy/` web çıktısını üretir.
