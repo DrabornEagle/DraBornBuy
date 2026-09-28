@@ -298,7 +298,7 @@ export default function Dbb_App() {
   };
   const dbb_checkout = async () => {
     if (!dbb_quote) return;
-    if (!dbb_config.dbb_enabled) { dbb_set_notice('Gerçek siparişler henüz açılmadı; Ankara şubesi ve ödeme hesabı doğrulanmalı.'); return; }
+    if (!dbb_config.dbb_enabled) { dbb_set_notice('Sipariş altyapısı şu anda hazır değil; güncel fiyat akışı, kurye veya ödeme hesabı kontrol ediliyor.'); return; }
     if (!dbb_user) { dbb_set_notice('Sipariş için önce hesabına giriş yap.'); dbb_set_tab('account'); return; }
     if (!dbb_address_confirmed || dbb_address.trim().length < 10) { dbb_set_notice('Haritadan Ankara adresini seçip açık adresi yaz.'); return; }
     if (dbb_budget && dbb_quote.dbb_total > Number(dbb_budget.replace(',', '.')) * 100) { dbb_set_notice('Seçilen sepet bütçe sınırını aşıyor.'); return; }
@@ -353,14 +353,14 @@ export default function Dbb_App() {
           dbb_set_products(dbb_old=>[...dbb_old,...dbb_selected.filter(dbb_product=>!dbb_old.some(dbb_item=>dbb_item.dbb_id===dbb_product.dbb_id))]);
           dbb_change_basket(dbb_selected.map(dbb_product=>({dbb_product_id:dbb_product.dbb_id,dbb_quantity:1})));
           dbb_set_tab('basket');
-          dbb_set_notice(`Kahvaltılık taslak hazır: ${dbb_selected.length} ürün · çevrimiçi ürün toplamı ${dbb_lira(dbb_running)}. Stok, kurye ve şube fiyatı doğrulanmadığından ${dbb_budget} TL teslimat bütçesi garanti edilemez.`);
+          dbb_set_notice(`Kahvaltılık taslak hazır: ${dbb_selected.length} ürün · ürün toplamı ${dbb_lira(dbb_running)}. Mağaza mevcudiyeti alışveriş sırasında kurye tarafından teyit edilir; fiyat farkı iznin uygulanır.`);
           return;
         }
       } catch(dbb_error) {dbb_set_breakfast_feedback((dbb_error as Error).message);return;}
       finally {dbb_set_pending(false);}
     }
     if (!dbb_list.length) {
-      dbb_set_breakfast_feedback('Bu bütçe için güncel stoklu kahvaltılık bulunamadı. Kaynak güncellendiğinde tekrar dene.');return;
+      dbb_set_breakfast_feedback('Bu bütçe için güncel fiyatlı kahvaltılık bulunamadı. Katalog her dakika güncelleniyor; tekrar deneyebilirsin.');return;
     }
     dbb_set_breakfast_feedback(''); dbb_change_basket(dbb_list); dbb_set_tab('basket'); dbb_set_notice(`${dbb_list.length} kahvaltılık bütçene göre seçildi; istediğin ürünleri değiştirebilirsin.`);
   };
@@ -389,7 +389,7 @@ export default function Dbb_App() {
       <View style={{height:1,backgroundColor:dbb_palette.border}} />
       <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10}}>
         <View style={{flex:1,gap:2}}>
-          <Text style={{color:'#5B7067',fontWeight:'700',fontSize:11}}>{dbb_choices.length?'EN UYGUN ŞUBE FİYATI':dbb_online?'ÇEVRİMİÇİ KAYNAK FİYATI':'ÇEVRİMİÇİ DURUM'}</Text>
+          <Text style={{color:'#5B7067',fontWeight:'700',fontSize:11}}>{dbb_choices.length?(dbb_choices[0]?.dbb_availability==='unknown'?'GÜNCEL MARKET FİYATI · KURYE TEYİDİ':'EN UYGUN ŞUBE FİYATI'):dbb_online?'ÇEVRİMİÇİ KAYNAK FİYATI':'ÇEVRİMİÇİ DURUM'}</Text>
           <Text style={{color:'#123D31',fontWeight:'900',fontSize:23,fontVariant:['tabular-nums']}}>{dbb_choices.length?dbb_lira(dbb_choices[0].dbb_price_kurus):dbb_online?dbb_lira(dbb_online):dbb_product.dbb_catalog_in_stock===false?'Çevrimiçi stok yok':'Fiyat izleniyor'}</Text>
           {dbb_choices.length?<Text style={{color:'#60736B',fontSize:11}}>Teslim dahil {dbb_product_quote?dbb_lira(dbb_product_quote.dbb_total):'—'}</Text>:
             <Text style={{color:'#60736B',fontSize:11}}>{dbb_product.dbb_source_merchant || 'Ürün kaynağı'} · {dbb_product.dbb_catalog_checked_at?new Date(dbb_product.dbb_catalog_checked_at).toLocaleDateString('tr-TR'):'katalog kaydı'}</Text>}
@@ -448,7 +448,7 @@ export default function Dbb_App() {
         <Ionicons name="bookmark" color={dbb_theme.yellow} size={20} /><Text style={[dbb_styles.itemTitle,{flex:1}]}>{dbb_list.dbb_name}</Text>
         <Pressable onPress={() => dbb_restore_list(dbb_list.dbb_items)}><Ionicons name="arrow-forward-circle" color={dbb_theme.mint} size={26} /></Pressable>
       </Dbb_Card>)}</Dbb_Section>}
-    <Dbb_Section dbb_title="Keşfetmeye devam et" dbb_caption={dbb_offers.length?'Ankara şubelerinde güncel doğrulanan fiyatlar görünür.':'Kaynak sayfası bulunan ürünler; çevrimiçi fiyatları şube fiyatından farklı olabilir.'}>
+    <Dbb_Section dbb_title="Keşfetmeye devam et" dbb_caption={dbb_offers.length?'Güncel market fiyatlarıyla sipariş hemen hesaplanır; mağaza mevcudiyeti kurye alışverişte teyit eder.':'Kaynak sayfası bulunan ürünler; çevrimiçi fiyatları şube fiyatından farklı olabilir.'}>
       {dbb_products.slice(0, 4).map(dbb_product_card)}
       {!dbb_products.length&&<Dbb_Card><Text style={dbb_styles.itemTitle}>{dbb_catalog_loading?'Katalog yükleniyor':'Henüz ürün bulunamadı'}</Text>
         <Text style={dbb_styles.muted}>Bağlantıyı veya yönetici ürün kayıtlarını kontrol et.</Text></Dbb_Card>}
@@ -514,7 +514,7 @@ export default function Dbb_App() {
       })}
       {!dbb_result.dbb_best && <View style={{borderRadius:18,backgroundColor:'#25424A',padding:15,flexDirection:'row',gap:10,alignItems:'flex-start'}}>
         <Ionicons name="information-circle" color={dbb_theme.yellow} size={20}/><View style={{flex:1,gap:4}}><Text style={{color:'white',fontWeight:'900',fontSize:13}}>Teslimat hesabı şu anda sunulamıyor</Text>
-        <Text style={{color:'#CFE0DC',fontSize:11,lineHeight:17}}>Bu ürünler için doğrulanmış Ankara mağaza stoğu bulunmuyor. Listeyi kaydedebilir, ürün eklemeye devam edebilirsin. Görünen fiyat ödeme tutarı değildir.</Text></View>
+        <Text style={{color:'#CFE0DC',fontSize:11,lineHeight:17}}>Bu ürünler için şu anda siparişe açık güncel fiyat bulunmuyor. Listeyi kaydedebilir, ürün eklemeye devam edebilirsin.</Text></View>
       </View>}
       <Dbb_Button dbb_title="Ürün eklemeye devam et" dbb_icon="add-circle-outline" dbb_kind="ghost" dbb_onPress={()=>dbb_set_tab('search')} />
       <Dbb_Card><Text style={dbb_styles.itemTitle}>Bu sepeti kaydet</Text>
@@ -558,7 +558,7 @@ export default function Dbb_App() {
         <Dbb_Card><Text style={dbb_styles.itemTitle}>Fiyat farkı izni</Text><Text style={dbb_styles.muted}>Kasadaki birim fiyatın tahminin ne kadar üstünde olmasını kabul edersin? Limit aşılırsa kurye ürün için onay bekler.</Text>
           <TextInput style={dbb_styles.input} keyboardType="decimal-pad" value={dbb_tolerance} onChangeText={dbb_set_tolerance} placeholder="50 TL" placeholderTextColor="#7580A0" /></Dbb_Card>
         <Dbb_Button dbb_title={!dbb_config.dbb_enabled ? 'Siparişler henüz açılmadı' : 'Siparişi oluştur'} dbb_icon="arrow-forward" dbb_kind="mint" dbb_onPress={dbb_checkout} dbb_disabled={dbb_pending || !dbb_config.dbb_enabled} />
-        {!dbb_config.dbb_enabled && <Text style={dbb_styles.muted}>Ankara şube fiyatları, stok ve ödeme hesabı yönetici tarafından doğrulandıktan sonra sipariş açılır.</Text>}
+        {!dbb_config.dbb_enabled && <Text style={dbb_styles.muted}>Canlı sipariş altyapısı geçici olarak hazır değilse fiyat akışı, kurye ve ödeme hesabı otomatik kontrol edilir.</Text>}
       </>}
     </>}
   </View>;
@@ -573,7 +573,7 @@ export default function Dbb_App() {
       <TextInput style={dbb_styles.input} value={dbb_password} onChangeText={dbb_set_password} secureTextEntry placeholder="Şifre (en az 6 karakter)" placeholderTextColor="#7580A0" />
       <Dbb_Button dbb_title="Giriş yap" dbb_onPress={() => dbb_authenticate('signIn')} dbb_disabled={dbb_pending} />
       <Dbb_Button dbb_title="Yeni hesap oluştur" dbb_kind="ghost" dbb_onPress={() => dbb_authenticate('signUp')} dbb_disabled={dbb_pending} /></Dbb_Card>}
-    <Dbb_Card><Text style={dbb_styles.itemTitle}>DraBornBuy · Ankara</Text><Text style={dbb_styles.muted}>Ürün bilgileri gerçek kaynaklara bağlıdır. Siparişler doğrulanmış şube fiyatı ve ödeme bilgileriyle açılır.</Text></Dbb_Card>
+    <Dbb_Card><Text style={dbb_styles.itemTitle}>DraBornBuy · Ankara</Text><Text style={dbb_styles.muted}>Ürün bilgileri gerçek kaynaklara bağlıdır. Güncel fiyatla sipariş oluşturulur; fiziksel mağaza mevcudiyetini kurye alışveriş sırasında teyit eder.</Text></Dbb_Card>
   </View>;
 
   const dbb_content = dbb_tab === 'home' ? dbb_home : dbb_tab === 'search' ? dbb_search_screen : dbb_tab === 'basket' ? dbb_basket_screen :
