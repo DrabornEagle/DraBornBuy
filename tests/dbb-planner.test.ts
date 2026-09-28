@@ -20,11 +20,12 @@ test('kahvaltılık planı ilk eşleşme satın alınamazsa siparişe açık alt
   const dbb_orderable = dbb_product('milk-live','Süt Güncel');
   const dbb_result = dbb_breakfast_under_budget(
     [dbb_unavailable,dbb_orderable],
-    [dbb_offer(dbb_orderable,6500,'unknown')],
+    [dbb_offer(dbb_orderable,6500,'confirmed')],
     dbb_home,
     100000
   );
   assert.deepEqual(dbb_result,[{dbb_product_id:'milk-live',dbb_quantity:1}]);
+  assert.deepEqual(dbb_breakfast_under_budget([dbb_orderable],[dbb_offer(dbb_orderable,6500,'unknown')],dbb_home,100000),[]);
 });
 
 test('istenen ana ürün bulunmazsa siparişe açık kahvaltılık ürünlerden sepet oluşturur', () => {

@@ -27,7 +27,9 @@ export async function dbb_load_catalog(): Promise<{ dbb_offers: Dbb_Offer[]; dbb
   if (!dbb_client) return { dbb_offers: [], dbb_products: [], dbb_config: dbb_default_config, dbb_total_products: 0 };
   const [dbb_result, dbb_products_result, dbb_featured_result, dbb_settings, dbb_count_result] = await Promise.all([
     dbb_client.from('dbb_offers').select('dbb_id,dbb_store_id,dbb_product_id,dbb_price_kurus,dbb_in_stock,dbb_verified,dbb_checked_at,dbb_source_url,dbb_availability,dbb_stores!inner(dbb_id,dbb_name,dbb_address,dbb_lat,dbb_lon,dbb_active),dbb_products!inner(dbb_id,dbb_name,dbb_brand,dbb_size,dbb_category,dbb_barcode,dbb_image_url,dbb_source_url,dbb_active)').limit(400),
-    dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true).order('dbb_last_seen_at',{ascending:false,nullsFirst:false}).limit(180),
+    dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true)
+      .order('dbb_catalog_in_stock',{ascending:false,nullsFirst:false})
+      .order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false}).limit(180),
     dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true).is('dbb_external_key',null).order('dbb_created_at').limit(20),
     dbb_client.from('dbb_config').select('*').eq('dbb_key','ankara').single(),
     dbb_client.from('dbb_products').select('dbb_id',{count:'exact',head:true}).eq('dbb_active',true),
@@ -52,7 +54,7 @@ export async function dbb_load_catalog(): Promise<{ dbb_offers: Dbb_Offer[]; dbb
     dbb_store: dbb_row.dbb_stores as Dbb_Offer['dbb_store'], dbb_product: dbb_row.dbb_products as Dbb_Offer['dbb_product']
   }));
   const dbb_unique=new Map<string,Dbb_Product>();
-  for (const dbb_item of [...(dbb_featured_result.data||[]),...(dbb_products_result.data||[])]) dbb_unique.set(dbb_item.dbb_id,dbb_item as Dbb_Product);
+  for (const dbb_item of [...(dbb_products_result.data||[]),...(dbb_featured_result.data||[])]) dbb_unique.set(dbb_item.dbb_id,dbb_item as Dbb_Product);
   return { dbb_offers, dbb_products: [...dbb_unique.values()], dbb_config: dbb_settings.data as Dbb_Config,
     dbb_total_products: dbb_count_result.count || 0 };
 }
@@ -64,20 +66,25 @@ export async function dbb_search_catalog(dbb_query:string,dbb_category='Tümü',
   if (dbb_category!=='Tümü') dbb_request=dbb_request.eq('dbb_category',dbb_category);
   if (dbb_words.length) dbb_request=/^\d{8,14}$/.test(dbb_words[0]) ? dbb_request.eq('dbb_barcode',dbb_words[0]) :
     dbb_request.ilike('dbb_name',`%${dbb_words.join('%')}%`);
-  const {data:dbb_data,error:dbb_error}=await dbb_request.order('dbb_last_seen_at',{ascending:false,nullsFirst:false}).range(dbb_offset,dbb_offset+99);
+  const {data:dbb_data,error:dbb_error}=await dbb_request
+    .order('dbb_catalog_in_stock',{ascending:false,nullsFirst:false})
+    .order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false})
+    .range(dbb_offset,dbb_offset+99);
   if (dbb_error) throw dbb_error;
   return dbb_data as Dbb_Product[];
 }
 
 export async function dbb_breakfast_catalog():Promise<Dbb_Product[]> {
   if (!dbb_client) return [];
-  const {data,error}=await dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true)
-    .eq('dbb_category','Kahvaltılık')
-    .gte('dbb_catalog_checked_at',new Date(Date.now()-24*60*60*1000).toISOString())
-    .not('dbb_catalog_price_kurus','is',null)
-    .order('dbb_catalog_price_kurus',{ascending:true}).limit(200);
-  if (error) throw error;
-  return data as Dbb_Product[];
+  // Fetch essentials separately: a single recent page can omit rare items such
+  // as milk or tea even when they exist in the catalog.
+  const dbb_terms=['yumurta','peynir','zeytin','ekmek','süt','çay'];
+  const dbb_pages=await Promise.all(dbb_terms.map(dbb_term=>dbb_client!.from('dbb_products')
+    .select(dbb_product_fields).eq('dbb_active',true).eq('dbb_category','Kahvaltılık')
+    .ilike('dbb_name',`%${dbb_term}%`).order('dbb_catalog_in_stock',{ascending:false,nullsFirst:false})
+    .order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false}).limit(30)));
+  for (const dbb_page of dbb_pages) if (dbb_page.error) throw dbb_page.error;
+  return [...new Map(dbb_pages.flatMap(dbb_page=>dbb_page.data||[]).map(dbb_item=>[dbb_item.dbb_id,dbb_item as Dbb_Product])).values()];
 }
 
 export async function dbb_products_for_basket(dbb_ids:string[]):Promise<Dbb_Product[]> {

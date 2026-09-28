@@ -3,7 +3,8 @@ import { strict as dbb_assert } from 'node:assert';
 import { dbb_build_quote, dbb_distance_km, dbb_optimize } from '../src/dbb-optimizer';
 import { dbb_center, dbb_demo_offers } from './dbb-fixtures';
 import { dbb_demo_products } from './dbb-fixtures';
-import { dbb_breakfast_under_budget, dbb_search_text } from '../src/dbb-planner';
+import { dbb_breakfast_draft, dbb_breakfast_under_budget, dbb_search_text } from '../src/dbb-planner';
+const dbb_confirmed_offers=dbb_demo_offers.map(dbb_offer=>({...dbb_offer,dbb_verified:true,dbb_availability:'confirmed' as const}));
 
 test('Ankara basket quote includes every fee and each product once', () => {
   const dbb_result = dbb_optimize([{ dbb_product_id: 'kola', dbb_quantity: 2 }, { dbb_product_id: 'nutella', dbb_quantity: 1 }], dbb_demo_offers, dbb_center);
@@ -28,10 +29,19 @@ test('missing stock prevents a quote and non Ankara coordinates are rejected in 
 });
 
 test('budget breakfast list stays below total including delivery', () => {
-  const dbb_list = dbb_breakfast_under_budget(dbb_demo_products,dbb_demo_offers,dbb_center,50000);
+  const dbb_list = dbb_breakfast_under_budget(dbb_demo_products,dbb_confirmed_offers,dbb_center,50000);
   dbb_assert.ok(dbb_list.length > 0);
-  dbb_assert.ok(dbb_optimize(dbb_list,dbb_demo_offers,dbb_center).dbb_best!.dbb_total <= 50000);
-  dbb_assert.deepEqual(dbb_breakfast_under_budget(dbb_demo_products,dbb_demo_offers,dbb_center,1000),[]);
+  dbb_assert.ok(dbb_optimize(dbb_list,dbb_confirmed_offers,dbb_center).dbb_best!.dbb_total <= 50000);
+  dbb_assert.deepEqual(dbb_breakfast_under_budget(dbb_demo_products,dbb_confirmed_offers,dbb_center,1000),[]);
+  dbb_assert.equal(new Set(dbb_list.map(dbb_item=>dbb_item.dbb_product_id)).size,dbb_list.length);
+  dbb_assert.ok(dbb_list.every(dbb_item=>dbb_demo_products.find(dbb_product=>dbb_product.dbb_id===dbb_item.dbb_product_id)?.dbb_category==='Kahvaltılık'));
+});
+
+test('without branch offers, breakfast is a unique unpriced draft', () => {
+  dbb_assert.deepEqual(dbb_breakfast_under_budget(dbb_demo_products,[],dbb_center,500000),[]);
+  const dbb_list=dbb_breakfast_draft(dbb_demo_products);
+  dbb_assert.equal(dbb_list.length,6);
+  dbb_assert.equal(new Set(dbb_list.map(dbb_item=>dbb_item.dbb_product_id)).size,6);
 });
 
 test('store product link can be normalized into searchable words', () => {

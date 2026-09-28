@@ -213,7 +213,7 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice:dbb_global_notice,dbb_o
         <Dbb_Button dbb_title="Mağazayı kaydet" dbb_onPress={dbb_save_store} dbb_disabled={dbb_busy} />
         {dbb_feedback?<Text selectable accessibilityRole="alert" style={{color:dbb_theme.yellow,lineHeight:20}}>{dbb_feedback}</Text>:null}
         {dbb_store.dbb_id&&<Dbb_Button dbb_title="Yeni mağazaya geç" dbb_kind="ghost" dbb_onPress={()=>dbb_set_store(dbb_empty_store)} />}
-        {dbb_stores.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_store(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#254735'}}>
+        {dbb_stores.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_store(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#393D79'}}>
           <Text style={dbb_styles.itemTitle}>{dbb_item.dbb_name} · {dbb_item.dbb_active?'Aktif':'Hazırlık kaydı'}</Text><Text style={dbb_styles.muted}>{dbb_item.dbb_address}</Text>
           {dbb_item.dbb_source_url?<Text onPress={()=>Linking.openURL(dbb_item.dbb_source_url!)} style={{color:dbb_theme.mint,fontSize:12}}>Resmî şube sayfası ↗</Text>:null}</Pressable>)}
       </View>}
@@ -232,7 +232,7 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice:dbb_global_notice,dbb_o
         <Dbb_Button dbb_title="Ürünü kaydet" dbb_onPress={dbb_save_product} dbb_disabled={dbb_busy} />
         {dbb_feedback?<Text selectable accessibilityRole="alert" style={{color:dbb_theme.yellow,lineHeight:20}}>{dbb_feedback}</Text>:null}
         {dbb_product.dbb_id&&<Dbb_Button dbb_title="Yeni ürüne geç" dbb_kind="ghost" dbb_onPress={()=>dbb_set_product(dbb_empty_product)} />}
-        {dbb_products.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_product(dbb_item)} style={{flexDirection:'row',gap:10,alignItems:'center',padding:8,borderRadius:14,backgroundColor:'#254735'}}>
+        {dbb_products.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_product(dbb_item)} style={{flexDirection:'row',gap:10,alignItems:'center',padding:8,borderRadius:14,backgroundColor:'#393D79'}}>
           {dbb_item.dbb_image_url?<Image source={{uri:dbb_item.dbb_image_url}} style={{width:44,height:44,borderRadius:9,backgroundColor:'white'}} resizeMode="contain" />:<Ionicons name="cube-outline" size={26} color={dbb_theme.yellow} />}
           <Text style={[dbb_styles.itemTitle,{flex:1,fontSize:13}]}>{dbb_item.dbb_name} · {dbb_item.dbb_size}</Text></Pressable>)}
       </View>}
@@ -242,12 +242,12 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice:dbb_global_notice,dbb_o
         <Text style={dbb_styles.itemTitle}>Mağaza seç</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{dbb_stores.map(dbb_item=><Pressable key={dbb_item.dbb_id}
           onPress={()=>dbb_set_offer({...dbb_offer,dbb_store_id:dbb_item.dbb_id})}
-          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_store_id===dbb_item.dbb_id?'#32754C':'#254735'}}>
+          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_store_id===dbb_item.dbb_id?'#6155BD':'#393D79'}}>
           <Text style={{color:'white',fontSize:12}}>{dbb_item.dbb_name}</Text></Pressable>)}</View>
         <Text style={dbb_styles.itemTitle}>Ürün seç</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{dbb_products.map(dbb_item=><Pressable key={dbb_item.dbb_id}
           onPress={()=>dbb_set_offer({...dbb_offer,dbb_product_id:dbb_item.dbb_id})}
-          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_product_id===dbb_item.dbb_id?'#32754C':'#254735'}}>
+          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_product_id===dbb_item.dbb_id?'#6155BD':'#393D79'}}>
           <Text style={{color:'white',fontSize:12}}>{dbb_item.dbb_name} {dbb_item.dbb_size}</Text></Pressable>)}</View>
         <Dbb_Field dbb_label="Şubede gözlenen nihai fiyat · TL" dbb_value={dbb_offer.dbb_price} dbb_change={dbb_value=>dbb_set_offer({...dbb_offer,dbb_price:dbb_value})} dbb_keyboard="decimal-pad" />
         <Dbb_Field dbb_label="Kaynak URL (isteğe bağlı)" dbb_value={dbb_offer.dbb_source_url} dbb_change={dbb_value=>dbb_set_offer({...dbb_offer,dbb_source_url:dbb_value})} dbb_keyboard="url" />
@@ -257,7 +257,7 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice:dbb_global_notice,dbb_o
         <Dbb_Button dbb_title="Teklifi kaydet" dbb_onPress={dbb_save_offer} dbb_disabled={dbb_busy} />
         {dbb_feedback?<Text selectable accessibilityRole="alert" style={{color:dbb_theme.yellow,lineHeight:20}}>{dbb_feedback}</Text>:null}
         {dbb_offer.dbb_id&&<Dbb_Button dbb_title="Yeni teklife geç" dbb_kind="ghost" dbb_onPress={()=>dbb_set_offer(dbb_empty_offer)} />}
-        {dbb_offers.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_offer(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#254735'}}>
+        {dbb_offers.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_offer(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#393D79'}}>
           <Text style={dbb_styles.itemTitle}>{dbb_products.find(dbb_p=>dbb_p.dbb_id===dbb_item.dbb_product_id)?.dbb_name} · {dbb_stores.find(dbb_s=>dbb_s.dbb_id===dbb_item.dbb_store_id)?.dbb_name}</Text>
           <Text style={dbb_styles.muted}>{dbb_tl(dbb_item.dbb_price_kurus)} TL · {dbb_item.dbb_verified&&dbb_item.dbb_in_stock?'Doğrulanmış':'Kapalı'} · {new Date(dbb_item.dbb_checked_at).toLocaleString('tr-TR')}</Text></Pressable>)}
       </View>}
