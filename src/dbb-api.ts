@@ -3,9 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import type { Dbb_Coordinates, Dbb_Offer, Dbb_Order, Dbb_Product } from './dbb-model';
 
-const dbb_url = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const dbb_key = process.env.EXPO_PUBLIC_SUPABASE_KEY || '';
-let dbb_mapbox = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
+const dbb_default_url = 'https://xpdiwyxnnrmyvpcqwuyb.supabase.co';
+const dbb_default_key = 'sb_publishable_cu71JQGPiRusMw_YeZzUbg_6r9r13TG';
+const dbb_env_url = String(process.env.EXPO_PUBLIC_SUPABASE_URL || '').trim();
+const dbb_env_key = String(process.env.EXPO_PUBLIC_SUPABASE_KEY || '').trim();
+const dbb_url = dbb_env_url.startsWith('https://') && !dbb_env_url.includes('PASTE_') ? dbb_env_url : dbb_default_url;
+const dbb_key = dbb_env_key.startsWith('sb_publishable_') ? dbb_env_key : dbb_default_key;
+let dbb_mapbox = String(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '').trim();
+if (!dbb_mapbox.startsWith('pk.')) dbb_mapbox = '';
 export const dbb_client = dbb_url && dbb_key && (process.env.EXPO_OS !== 'web' || typeof window !== 'undefined') ? createClient(dbb_url, dbb_key, {
   auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
 }) : null;
