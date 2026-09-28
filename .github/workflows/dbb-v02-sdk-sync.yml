@@ -26,6 +26,7 @@ jobs:
       - name: Upgrade Expo preview and align SDK packages
         run: |
           npm install expo@58.0.0-preview.8 --save-exact
+          npm install --save-dev @types/node
           npx expo install --fix --npm
       - name: Verify dependency alignment
         run: |
