@@ -1,0 +1,10 @@
+export type Dbb_Coordinates = { dbb_lat: number; dbb_lon: number };
+export type Dbb_Store = Dbb_Coordinates & { dbb_id: string; dbb_name: string; dbb_address: string; dbb_active?: boolean };
+export type Dbb_Product = { dbb_id: string; dbb_name: string; dbb_brand: string; dbb_size: string; dbb_category: string; dbb_barcode?: string | null; dbb_emoji?: string };
+export type Dbb_Offer = { dbb_id: string; dbb_store_id: string; dbb_product_id: string; dbb_price_kurus: number; dbb_in_stock: boolean; dbb_verified: boolean; dbb_checked_at: string; dbb_store: Dbb_Store; dbb_product: Dbb_Product };
+export type Dbb_BasketItem = { dbb_product_id: string; dbb_quantity: number };
+export type Dbb_Assignment = { dbb_product_id: string; dbb_offer: Dbb_Offer; dbb_quantity: number };
+export type Dbb_Quote = { dbb_assignments: Dbb_Assignment[]; dbb_route: Dbb_Store[]; dbb_subtotal: number; dbb_courier_fee: number; dbb_service_fee: number; dbb_bag_fee: number; dbb_total: number; dbb_distance_km: number; dbb_minutes: number; dbb_exact: boolean };
+export type Dbb_Order = Dbb_Coordinates & { dbb_id: string; dbb_code: string; dbb_status: string; dbb_address: string; dbb_total_kurus: number; dbb_subtotal_kurus: number; dbb_courier_fee_kurus: number; dbb_service_fee_kurus: number; dbb_bag_fee_kurus: number; dbb_customer_id: string; dbb_courier_id: string | null; dbb_created_at: string; dbb_route_store_ids: string[]; dbb_stop_index: number };
+export type Dbb_OrderItem = { dbb_id: string; dbb_order_id: string; dbb_store_id: string; dbb_product_name: string; dbb_store_name: string; dbb_quantity: number; dbb_unit_price_kurus: number; dbb_pick_status: string; dbb_actual_price_kurus: number | null };
+export type Dbb_Message = { dbb_id: string; dbb_order_id: string; dbb_sender_id: string; dbb_body: string; dbb_created_at: string };

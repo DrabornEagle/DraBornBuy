@@ -1,0 +1,90 @@
+import 'react-native-url-polyfill/auto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createClient } from '@supabase/supabase-js';
+import type { Dbb_Coordinates, Dbb_Offer, Dbb_Order } from './dbb-model';
+
+const dbb_url = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const dbb_key = process.env.EXPO_PUBLIC_SUPABASE_KEY || '';
+export const dbb_client = dbb_url && dbb_key && (process.env.EXPO_OS !== 'web' || typeof window !== 'undefined') ? createClient(dbb_url, dbb_key, {
+  auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+}) : null;
+
+export type Dbb_Config = { dbb_enabled: boolean; dbb_bank_name: string; dbb_account_holder: string; dbb_iban: string };
+export const dbb_default_config: Dbb_Config = { dbb_enabled: false, dbb_bank_name: '', dbb_account_holder: '', dbb_iban: '' };
+
+export async function dbb_load_catalog(): Promise<{ dbb_offers: Dbb_Offer[]; dbb_config: Dbb_Config }> {
+  if (!dbb_client) return { dbb_offers: [], dbb_config: dbb_default_config };
+  const [dbb_result, dbb_settings] = await Promise.all([
+    dbb_client.from('dbb_offers').select('dbb_id,dbb_store_id,dbb_product_id,dbb_price_kurus,dbb_in_stock,dbb_verified,dbb_checked_at,dbb_stores!inner(dbb_id,dbb_name,dbb_address,dbb_lat,dbb_lon),dbb_products!inner(dbb_id,dbb_name,dbb_brand,dbb_size,dbb_category,dbb_barcode)').limit(400),
+    dbb_client.from('dbb_config').select('dbb_enabled,dbb_bank_name,dbb_account_holder,dbb_iban').eq('dbb_key','ankara').single()
+  ]);
+  if (dbb_result.error) throw dbb_result.error;
+  const dbb_offers = ((dbb_result.data || []) as unknown as Record<string, unknown>[]).map(dbb_row => ({
+    dbb_id: String(dbb_row.dbb_id), dbb_store_id: String(dbb_row.dbb_store_id), dbb_product_id: String(dbb_row.dbb_product_id),
+    dbb_price_kurus: Number(dbb_row.dbb_price_kurus), dbb_in_stock: Boolean(dbb_row.dbb_in_stock), dbb_verified: Boolean(dbb_row.dbb_verified),
+    dbb_checked_at: String(dbb_row.dbb_checked_at),
+    dbb_store: dbb_row.dbb_stores as Dbb_Offer['dbb_store'], dbb_product: dbb_row.dbb_products as Dbb_Offer['dbb_product']
+  }));
+  return { dbb_offers, dbb_config: dbb_settings.data ?? dbb_default_config };
+}
+
+export async function dbb_get_orders(dbb_user_id: string): Promise<Dbb_Order[]> {
+  if (!dbb_client) return [];
+  const { data: dbb_data, error: dbb_error } = await dbb_client.from('dbb_orders').select('*').eq('dbb_customer_id',dbb_user_id).order('dbb_created_at',{ ascending: false }).limit(20);
+  if (dbb_error) throw dbb_error;
+  return (dbb_data || []) as Dbb_Order[];
+}
+
+export async function dbb_get_courier_orders(dbb_user_id: string): Promise<Dbb_Order[]> {
+  if (!dbb_client) return [];
+  const { data: dbb_data, error: dbb_error } = await dbb_client.from('dbb_orders').select('*').eq('dbb_courier_id',dbb_user_id).in('dbb_status',['store_trip','shopping','delivery','delivered']).order('dbb_created_at',{ ascending: false }).limit(20);
+  if (dbb_error) throw dbb_error;
+  return (dbb_data || []) as Dbb_Order[];
+}
+
+export type Dbb_Job = { dbb_id:string; dbb_code:string; dbb_created_at:string; dbb_courier_fee_kurus:number; dbb_subtotal_kurus:number;
+  dbb_store_count:number; dbb_stops:{dbb_name:string;dbb_address:string;dbb_lat:number;dbb_lon:number}[];
+  dbb_items:{dbb_product_name:string;dbb_store_name:string;dbb_quantity:number;dbb_unit_price_kurus:number}[] };
+export async function dbb_get_open_jobs(): Promise<Dbb_Job[]> {
+  if (!dbb_client) return [];
+  const {data:dbb_data,error:dbb_error} = await dbb_client.rpc('dbb_open_jobs');
+  if (dbb_error) throw dbb_error;
+  return (dbb_data || []) as Dbb_Job[];
+}
+
+export async function dbb_create_live_order(dbb_assignments: { dbb_offer: { dbb_id: string }; dbb_quantity: number }[], dbb_address: string, dbb_location: Dbb_Coordinates, dbb_tolerance: number) {
+  if (!dbb_client) throw new Error('Supabase yapılandırılmadı');
+  const { data: dbb_data, error: dbb_error } = await dbb_client.rpc('dbb_create_order', {
+    dbb_p_items: dbb_assignments.map(dbb_item => ({ dbb_offer_id: dbb_item.dbb_offer.dbb_id, dbb_quantity: dbb_item.dbb_quantity })),
+    dbb_p_address: dbb_address, dbb_p_lat: dbb_location.dbb_lat, dbb_p_lon: dbb_location.dbb_lon,
+    dbb_p_tolerance_kurus: dbb_tolerance
+  });
+  if (dbb_error) throw dbb_error;
+  return dbb_data as { dbb_id: string; dbb_code: string; dbb_total_kurus: number; dbb_status: string };
+}
+
+const dbb_mapbox = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
+export function dbb_static_map(dbb_coordinates: Dbb_Coordinates, dbb_zoom = 12) {
+  if (!dbb_mapbox) return '';
+  const dbb_lon = dbb_coordinates.dbb_lon.toFixed(5); const dbb_lat = dbb_coordinates.dbb_lat.toFixed(5);
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-l+7b5cff(${dbb_lon},${dbb_lat})/${dbb_lon},${dbb_lat},${dbb_zoom}/700x350@2x?access_token=${dbb_mapbox}`;
+}
+export async function dbb_geocode(dbb_query: string) {
+  if (!dbb_mapbox || dbb_query.trim().length < 5) return [] as { dbb_name: string; dbb_location: Dbb_Coordinates }[];
+  const dbb_url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(dbb_query + ', Ankara')}&bbox=32.4,39.7,33.4,40.3&country=tr&language=tr&limit=5&access_token=${dbb_mapbox}`;
+  const dbb_response = await fetch(dbb_url);
+  if (!dbb_response.ok) throw new Error('Adres araması şu an çalışmıyor');
+  const dbb_data = await dbb_response.json();
+  return (dbb_data.features || []).map((dbb_feature: { properties: { full_address?: string; name?: string }; geometry: { coordinates: number[] } }) => ({
+    dbb_name: dbb_feature.properties.full_address || dbb_feature.properties.name || 'Ankara',
+    dbb_location: { dbb_lon: dbb_feature.geometry.coordinates[0], dbb_lat: dbb_feature.geometry.coordinates[1] }
+  })).filter((dbb_item: { dbb_location: Dbb_Coordinates }) => dbb_item.dbb_location.dbb_lat >= 39.7 && dbb_item.dbb_location.dbb_lat <= 40.3);
+}
+export async function dbb_road_eta(dbb_points: Dbb_Coordinates[]) {
+  if (!dbb_mapbox || dbb_points.length < 2) return null;
+  const dbb_coords = dbb_points.map(dbb_item => `${dbb_item.dbb_lon},${dbb_item.dbb_lat}`).join(';');
+  const dbb_response = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${dbb_coords}?overview=false&access_token=${dbb_mapbox}`);
+  if (!dbb_response.ok) return null;
+  const dbb_route = (await dbb_response.json()).routes?.[0];
+  return dbb_route ? { dbb_km: dbb_route.distance / 1000, dbb_minutes: Math.ceil(dbb_route.duration / 60) } : null;
+}
