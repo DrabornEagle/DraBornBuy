@@ -6,17 +6,18 @@ Expo SDK 58 Android/Expo Go ve web için ortak React Native uygulaması. Sepet, 
 
 ```bash
 pkg update -y
-pkg install -y git nodejs-lts
+pkg install -y git nodejs-lts npm
 cd ~
 git clone https://github.com/DrabornEagle/DraBornBuy.git
 cd DraBornBuy
 cp .env.example .env
 nano .env
 npm ci --legacy-peer-deps
+npx expo login
 npx expo start --lan --clear
 ```
 
-Telefon ve Expo Go aynı Wi-Fi ağında olmalı. Expo Go 58.0.0 ile Termux'ta görünen QR kodu okutun veya gösterilen `exp://` adresini Expo Go ana sayfasına girin. Termux'ta Node 22.13+ gerekir. Bu sürümde APK üretilmez. Web denemesi için `npm run web`; üretim web dosyaları için `npm run export:web`.
+Telefon ve Expo Go aynı Wi-Fi ağında, Expo CLI ile Expo Go aynı Expo hesabında olmalı. Expo Go 58.0.0 ile Termux'ta görünen QR kodu okutun veya gösterilen `exp://` adresini Expo Go ana sayfasına girin. Termux'ta Node 22.13+ gerekir. Bu sürümde APK üretilmez. Web denemesi için `npm run web`; üretim web dosyaları için `npm run export:web`.
 
 `.env` dosyasındaki iki yer tutucuyu sana verilen Supabase **publishable** anahtarı ve Mapbox **public** token'ı ile değiştir. `.env` GitHub'a yüklenmez; GitHub gizli bilgi taraması token'ı repoya yazmayı engeller. `service_role` veya Supabase secret key mobil uygulamaya asla eklenmez.
 
