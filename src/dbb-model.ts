@@ -1,5 +1,5 @@
 export type Dbb_Coordinates = { dbb_lat: number; dbb_lon: number };
-export type Dbb_Store = Dbb_Coordinates & { dbb_id: string; dbb_name: string; dbb_address: string; dbb_active?: boolean };
+export type Dbb_Store = Dbb_Coordinates & { dbb_id: string; dbb_name: string; dbb_address: string; dbb_active?: boolean;dbb_source_url?:string };
 export type Dbb_Product = { dbb_id: string; dbb_name: string; dbb_brand: string; dbb_size: string; dbb_category: string; dbb_barcode?: string | null; dbb_image_url?: string; dbb_source_url?: string };
 export type Dbb_Offer = { dbb_id: string; dbb_store_id: string; dbb_product_id: string; dbb_price_kurus: number; dbb_in_stock: boolean; dbb_verified: boolean; dbb_checked_at: string; dbb_source_url?: string; dbb_store: Dbb_Store; dbb_product: Dbb_Product };
 export type Dbb_BasketItem = { dbb_product_id: string; dbb_quantity: number };
