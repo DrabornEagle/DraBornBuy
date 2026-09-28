@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -10,7 +9,7 @@ import type { User } from '@supabase/supabase-js';
 import type { Dbb_BasketItem, Dbb_Coordinates, Dbb_Offer, Dbb_Product, Dbb_Quote } from './dbb-model';
 import { dbb_lira, dbb_optimize, dbb_build_quote, dbb_distance_km } from './dbb-optimizer';
 import { dbb_breakfast_under_budget, dbb_search_text } from './dbb-planner';
-import { dbb_client, dbb_create_live_order, dbb_default_config, dbb_geocode, dbb_load_catalog, dbb_road_eta, dbb_static_map, type Dbb_Config } from './dbb-api';
+import { dbb_client, dbb_create_live_order, dbb_default_config, dbb_geocode, dbb_load_catalog, dbb_road_eta, dbb_static_map, type Dbb_Chain, type Dbb_Config } from './dbb-api';
 import { Dbb_Button, Dbb_Card, Dbb_Hero, Dbb_Pill, Dbb_Section, dbb_styles, dbb_theme } from './dbb-ui';
 import { Dbb_Orders, Dbb_Courier, Dbb_Admin } from './dbb-operations';
 
@@ -23,7 +22,6 @@ const dbb_tabs: { dbb_key: Dbb_Tab; dbb_title: string; dbb_icon: keyof typeof Io
   { dbb_key: 'courier', dbb_title: 'Kurye', dbb_icon: 'bicycle-outline' },
   { dbb_key: 'account', dbb_title: 'Hesap', dbb_icon: 'person-outline' }
 ];
-const dbb_categories = ['Tümü', 'İçecek', 'Kahvaltılık', 'Temizlik', 'Temel gıda', 'Bakliyat'];
 const dbb_center = { dbb_lat: 39.92077, dbb_lon: 32.85411 };
 
 export default function Dbb_App() {
@@ -31,6 +29,7 @@ export default function Dbb_App() {
   const [dbb_tab, dbb_set_tab] = useState<Dbb_Tab>('home');
   const [dbb_offers, dbb_set_offers] = useState<Dbb_Offer[]>([]);
   const [dbb_products, dbb_set_products] = useState<Dbb_Product[]>([]);
+  const [dbb_chains, dbb_set_chains] = useState<Dbb_Chain[]>([]);
   const [dbb_catalog_loading, dbb_set_catalog_loading] = useState(true);
   const [dbb_config, dbb_set_config] = useState<Dbb_Config>(dbb_default_config);
   const [dbb_basket, dbb_set_basket] = useState<Dbb_BasketItem[]>([]);
@@ -42,6 +41,7 @@ export default function Dbb_App() {
   const [dbb_address_matches, dbb_set_address_matches] = useState<{ dbb_name: string; dbb_location: Dbb_Coordinates }[]>([]);
   const [dbb_quote_mode, dbb_set_quote_mode] = useState<'smart' | 'single'>('smart');
   const [dbb_budget, dbb_set_budget] = useState('');
+  const [dbb_breakfast_feedback, dbb_set_breakfast_feedback] = useState('');
   const [dbb_saved_name, dbb_set_saved_name] = useState('Aylık Ev Alışverişi');
   const [dbb_saved_lists, dbb_set_saved_lists] = useState<{dbb_id:string;dbb_name:string;dbb_items:Dbb_BasketItem[]}[]>([]);
   const [dbb_tolerance, dbb_set_tolerance] = useState('50');
@@ -57,7 +57,7 @@ export default function Dbb_App() {
 
   const dbb_refresh_catalog = useCallback(async () => {
     try { const dbb_data = await dbb_load_catalog();
-      dbb_set_config(dbb_data.dbb_config); dbb_set_offers(dbb_data.dbb_offers); dbb_set_products(dbb_data.dbb_products);
+      dbb_set_config(dbb_data.dbb_config); dbb_set_offers(dbb_data.dbb_offers); dbb_set_products(dbb_data.dbb_products);dbb_set_chains(dbb_data.dbb_chains);
     } catch (dbb_error) { dbb_set_notice(`Katalog bağlantısı: ${(dbb_error as Error).message}`); }
     finally { dbb_set_catalog_loading(false); }
   }, []);
@@ -87,6 +87,7 @@ export default function Dbb_App() {
     return (dbb_category === 'Tümü' || dbb_product.dbb_category === dbb_category) &&
       (!dbb_query.trim() || dbb_search_text(dbb_query).toLocaleLowerCase('tr-TR').replace(/[.,'’\-_]/g,' ').split(/\s+/).every(dbb_word => dbb_text.includes(dbb_word)));
   }), [dbb_products, dbb_category, dbb_query]);
+  const dbb_categories = useMemo(() => ['Tümü',...new Set(dbb_products.map(dbb_item=>dbb_item.dbb_category))], [dbb_products]);
   const dbb_result = useMemo(() => dbb_optimize(dbb_basket, dbb_offers, dbb_location, dbb_config), [dbb_basket, dbb_offers, dbb_location, dbb_config]);
   const dbb_quote = dbb_quote_mode === 'single' && dbb_result.dbb_single ? dbb_result.dbb_single : dbb_result.dbb_best;
   const dbb_count = dbb_basket.reduce((dbb_sum, dbb_item) => dbb_sum + dbb_item.dbb_quantity, 0);
@@ -161,19 +162,23 @@ export default function Dbb_App() {
   };
   const dbb_plan_breakfast = () => {
     const dbb_limit = Math.round(Number(dbb_budget.replace(',','.')) * 100);
-    if (!Number.isFinite(dbb_limit) || dbb_limit <= 0) { dbb_set_notice('Önce TL cinsinden bütçe gir.'); return; }
+    if (!Number.isFinite(dbb_limit) || dbb_limit <= 0) { dbb_set_breakfast_feedback('Önce TL cinsinden bir bütçe gir.'); return; }
     const dbb_list = dbb_breakfast_under_budget(dbb_products,dbb_offers,dbb_location,dbb_limit,dbb_config);
-    if (!dbb_list.length) { dbb_set_notice('Bu bütçeye teslimat dahil doğrulanmış kahvaltılık teklif bulunamadı.'); return; }
-    dbb_set_basket(dbb_list); dbb_set_tab('basket'); dbb_set_notice(`${dbb_list.length} kahvaltılık bütçene göre seçildi; istediğin ürünleri değiştirebilirsin.`);
+    if (!dbb_list.length) {
+      const dbb_message = dbb_offers.length ? 'Bu bütçeye teslimat dahil kahvaltılık teklif sığmıyor. Bütçeyi artır veya mağaza fiyatlarını kontrol et.' :
+        'Kahvaltılık sepeti için Ankara şubelerinde doğrulanmış fiyat ve stok henüz yok. Ürünleri inceleyebilirsin; fiyat uydurarak sepet oluşturmuyoruz.';
+      dbb_set_breakfast_feedback(dbb_message); return;
+    }
+    dbb_set_breakfast_feedback(''); dbb_set_basket(dbb_list); dbb_set_tab('basket'); dbb_set_notice(`${dbb_list.length} kahvaltılık bütçene göre seçildi; istediğin ürünleri değiştirebilirsin.`);
   };
 
   const dbb_product_card = (dbb_product: Dbb_Product) => {
     const dbb_choices = dbb_offers.filter(dbb_offer => dbb_offer.dbb_product_id === dbb_product.dbb_id).sort((dbb_a, dbb_b) => dbb_a.dbb_price_kurus - dbb_b.dbb_price_kurus);
     const dbb_product_quote = dbb_optimize([{ dbb_product_id: dbb_product.dbb_id, dbb_quantity: 1 }], dbb_choices, dbb_location, dbb_config).dbb_best;
     const dbb_quantity = dbb_basket.find(dbb_item => dbb_item.dbb_product_id === dbb_product.dbb_id)?.dbb_quantity || 0;
-    return <Dbb_Card key={dbb_product.dbb_id} dbb_style={{ gap: 13, backgroundColor: '#172346', borderColor:'#4D5F9B' }}>
-      <View style={dbb_styles.row}><View style={{ width: 90, height: 90, borderRadius: 19, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow:'hidden' }}>
-        {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:84,height:84}} resizeMode="contain" />:<Ionicons name="cube-outline" size={38} color={dbb_theme.purple} />}</View>
+    return <Dbb_Card key={dbb_product.dbb_id} dbb_style={{ gap: 13 }}>
+      <View style={dbb_styles.row}><View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#EBF3E0', alignItems: 'center', justifyContent: 'center', overflow:'hidden',borderWidth:3,borderColor:'#41664C' }}>
+        {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:76,height:76,borderRadius:38}} resizeMode="cover" />:<Ionicons name="cube-outline" size={38} color={dbb_theme.purple} />}</View>
         <View style={{ flex: 1, gap:6 }}><Text style={dbb_styles.itemTitle}>{dbb_product.dbb_name}</Text><Text style={dbb_styles.muted}>{dbb_product.dbb_brand} · {dbb_product.dbb_size}</Text>
           <Dbb_Pill dbb_label={dbb_choices.length?'ŞUBE FİYATI DOĞRULANDI':'GERÇEK ÜRÜN'} dbb_tone={dbb_choices.length?'mint':'purple'} /></View>
       </View>
@@ -189,7 +194,7 @@ export default function Dbb_App() {
           <><Text style={{color:dbb_theme.yellow,fontWeight:'800',fontSize:12}}>Ankara şube fiyatı bekleniyor</Text>
           <Text style={dbb_styles.muted}>Ürün sayfası ve görseli gerçek; stok henüz doğrulanmadı.</Text></>}</View>
         <Pressable onPress={() => dbb_choices.length?dbb_add(dbb_product.dbb_id):dbb_product.dbb_source_url&&Linking.openURL(dbb_product.dbb_source_url)}
-          style={{ backgroundColor: dbb_choices.length?dbb_theme.purple:'#344570', padding: 12, borderRadius: 14 }} accessibilityRole="button" accessibilityLabel={`${dbb_product.dbb_name} ${dbb_choices.length?'sepete ekle':'ürün sayfasını aç'}`}>
+          style={{ backgroundColor: dbb_choices.length?'#32754C':'#2E5743', padding: 12, borderRadius: 14 }} accessibilityRole="button" accessibilityLabel={`${dbb_product.dbb_name} ${dbb_choices.length?'sepete ekle':'ürün sayfasını aç'}`}>
           <Ionicons name={dbb_choices.length?(dbb_quantity?'add':'bag-add-outline'):'open-outline'} size={20} color="white" /></Pressable>
       </View>
     </Dbb_Card>;
@@ -198,35 +203,43 @@ export default function Dbb_App() {
   const dbb_home = <View style={{ gap: 25 }}>
     <Dbb_Hero dbb_onSearch={() => dbb_set_tab('search')} />
     <View style={{ flexDirection: 'row', gap: 9 }}>
-      {[['sparkles', 'Akıllı rota', dbb_theme.purple], ['pricetag', 'Şeffaf ücret', dbb_theme.mint], ['location', 'Ankara', dbb_theme.pink]].map(([dbb_icon, dbb_name, dbb_color]) =>
+      {[['basket', 'Sepet rotası', dbb_theme.yellow], ['pricetag', 'Şeffaf ücret', dbb_theme.mint], ['location', 'Ankara', dbb_theme.blue]].map(([dbb_icon, dbb_name, dbb_color]) =>
         <View key={dbb_name} style={{ backgroundColor: dbb_theme.panel, flex: 1, borderRadius: 15, padding: 12, gap: 7, borderColor: dbb_theme.line, borderWidth: 1 }}>
           <Ionicons name={dbb_icon as keyof typeof Ionicons.glyphMap} color={dbb_color} size={21} /><Text style={{ color: dbb_theme.text, fontSize: 11, fontWeight: '700' }}>{dbb_name}</Text></View>)}</View>
-    <Dbb_Section dbb_title="Raflardan seçtiklerimiz" dbb_caption="Gerçek ürün fotoğrafları · kaynak sayfalarını inceleyebilirsin.">
+    <Dbb_Section dbb_title="Ankara marketleri" dbb_caption="Market dizini; şube fiyatı doğrulananlar alışveriş hesabına katılır.">
+      <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{dbb_chains.map(dbb_chain=><Pressable key={dbb_chain.dbb_slug}
+        onPress={()=>Linking.openURL(dbb_chain.dbb_source_url)} accessibilityRole="link"
+        style={{paddingHorizontal:13,paddingVertical:11,borderRadius:13,backgroundColor:'#214736',borderWidth:1,borderColor:'#497651',flexDirection:'row',alignItems:'center',gap:6}}>
+        <Ionicons name="storefront-outline" size={16} color={dbb_theme.yellow} />
+        <Text style={{color:dbb_theme.text,fontWeight:'800',fontSize:12}}>{dbb_chain.dbb_name}</Text></Pressable>)}</View>
+      <Text style={dbb_styles.muted}>{dbb_offers.length ? `${dbb_offers.length} doğrulanmış teklif karşılaştırılıyor.` : 'Bu marketlerde doğrulanmış şube fiyatları henüz yok; katalog ürünleri sipariş fiyatı değildir.'}</Text>
+    </Dbb_Section>
+    <Dbb_Section dbb_title="Raflardan seçtiklerimiz" dbb_caption="Kaynak bağlantılı gerçek ürünler; yerel fiyat ve stok ayrıca doğrulanır.">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:12,paddingRight:12}}>
         {dbb_products.map((dbb_product,dbb_index)=><Pressable key={dbb_product.dbb_id} onPress={()=>{dbb_set_query(dbb_product.dbb_name);dbb_set_tab('search');}}
-          style={{width:140,borderRadius:20,padding:11,gap:8,backgroundColor:['#384080','#6A346B','#1B6580','#62502C'][dbb_index%4],borderWidth:1,borderColor:'#FFFFFF32'}}>
-          <View style={{height:106,borderRadius:15,backgroundColor:'white',alignItems:'center',justifyContent:'center'}}>
-            {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:99,height:99}} resizeMode="contain" />:<Ionicons name="cube-outline" size={39} color={dbb_theme.purple} />}</View>
+          style={{width:140,borderRadius:20,padding:11,gap:8,backgroundColor:['#285C3C','#49683E','#345A4C','#69623A'][dbb_index%4],borderWidth:1,borderColor:'#A4C69A55'}}>
+          <View style={{height:106,borderRadius:53,backgroundColor:'#EAF2DF',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+            {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:94,height:94,borderRadius:47}} resizeMode="cover" />:<Ionicons name="cube-outline" size={39} color={dbb_theme.purple} />}</View>
           <Text numberOfLines={2} style={{color:'white',fontWeight:'800',fontSize:12,minHeight:34}}>{dbb_product.dbb_name}</Text>
-          <Text style={{color:'#DFE5FF',fontSize:11}}>{dbb_product.dbb_size}</Text>
+          <Text style={{color:'#DDEBCF',fontSize:11}}>{dbb_product.dbb_size}</Text>
         </Pressable>)}
       </ScrollView>
     </Dbb_Section>
     <Dbb_Section dbb_title="Tek sepet. En iyi kombinasyon." dbb_caption="Ürün fiyatı, mağaza sayısı ve teslimat maliyeti bir arada hesaplanır.">
-      <LinearGradient colors={['#1B4F75','#384EAB','#6B3DA4']} start={{x:0,y:0}} end={{x:1,y:1}}
-        style={{borderRadius:24,padding:20,gap:12,overflow:'hidden'}}>
-        <Dbb_Pill dbb_label="AKILLI SEPET" dbb_tone="mint" />
+      <View style={{borderRadius:22,padding:20,gap:12,backgroundColor:'#294B35',borderWidth:1,borderColor:'#547B4C'}}>
+        <Dbb_Pill dbb_label="AKILLI SEPET" dbb_tone="yellow" />
         <Text style={{ color: 'white', fontSize: 22, fontWeight: '900' }}>Aynı sepet için tüm rotayı hesapla.</Text>
-        <Text style={{ color:'#E2E9FF',fontSize:13,lineHeight:19 }}>Tek mağaza ile çok mağazalı toplamı, ürün ve kurye ücretleriyle karşılaştır.</Text>
+        <Text style={{ color:'#D4E4D2',fontSize:13,lineHeight:19 }}>Tek mağaza ile çok mağazalı toplamı, ürün ve kurye ücretleriyle karşılaştır.</Text>
         <Dbb_Button dbb_title="Ürünleri keşfet" dbb_icon="arrow-forward" dbb_kind="mint" dbb_onPress={() => dbb_set_tab('search')} />
-      </LinearGradient>
+      </View>
     </Dbb_Section>
-    <Dbb_Card dbb_style={{backgroundColor:'#28233E',borderColor:'#8865FF77'}}>
-      <Dbb_Pill dbb_label="BÜTÇEYLE PLANLA" dbb_tone="purple" />
+    <Dbb_Card>
+      <Dbb_Pill dbb_label="BÜTÇEYLE PLANLA" dbb_tone="yellow" />
       <Text style={dbb_styles.itemTitle}>“500 TL’ye kahvaltılık hazırla”</Text>
       <Text style={dbb_styles.muted}>Doğrulanmış kahvaltılık fiyatları açıldığında teslimat dahil bütçene sığan listeyi oluşturur.</Text>
-      <TextInput style={dbb_styles.input} value={dbb_budget} onChangeText={dbb_set_budget} keyboardType="decimal-pad" placeholder="Bütçen · TL" placeholderTextColor="#7580A0" />
-      <Dbb_Button dbb_title="Kahvaltılık sepeti oluştur" dbb_icon="sparkles" dbb_onPress={dbb_plan_breakfast} />
+      <TextInput style={dbb_styles.input} value={dbb_budget} onChangeText={dbb_value=>{dbb_set_budget(dbb_value);dbb_set_breakfast_feedback('');}} keyboardType="decimal-pad" placeholder="Bütçen · TL" placeholderTextColor="#A1B59D" />
+      <Dbb_Button dbb_title="Kahvaltılık sepeti oluştur" dbb_icon="basket-outline" dbb_onPress={dbb_plan_breakfast} />
+      {dbb_breakfast_feedback?<View accessibilityRole="alert" style={{padding:12,backgroundColor:'#31533C',borderRadius:12,borderWidth:1,borderColor:dbb_theme.yellow}}><Text selectable style={{color:dbb_theme.text,lineHeight:20}}>{dbb_breakfast_feedback}</Text></View>:null}
     </Dbb_Card>
     {dbb_saved_lists.length > 0 && <Dbb_Section dbb_title="Kayıtlı sepetlerin" dbb_caption="Bugünün teklifleriyle yeniden hesapla.">
       {dbb_saved_lists.slice(0,3).map(dbb_list => <Dbb_Card key={dbb_list.dbb_id} dbb_style={{flexDirection:'row',alignItems:'center'}}>
@@ -258,7 +271,7 @@ export default function Dbb_App() {
         onBarcodeScanned={({ data: dbb_code }) => { dbb_set_query(dbb_code); dbb_set_scanner(false); }} />
       <Dbb_Button dbb_title="Kapat" dbb_kind="ghost" dbb_onPress={() => dbb_set_scanner(false)} /></Dbb_Card>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 9 }}>
-      {dbb_categories.map(dbb_name => <Pressable key={dbb_name} onPress={() => dbb_set_category(dbb_name)} style={{ borderRadius: 20, backgroundColor: dbb_category === dbb_name ? dbb_theme.purple : dbb_theme.panel,
+      {dbb_categories.map(dbb_name => <Pressable key={dbb_name} onPress={() => dbb_set_category(dbb_name)} style={{ borderRadius: 20, backgroundColor: dbb_category === dbb_name ? '#32754C' : dbb_theme.panel,
         paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: dbb_category === dbb_name ? dbb_theme.purple : dbb_theme.line }}>
         <Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>{dbb_name}</Text></Pressable>)}</ScrollView>
     <Text style={dbb_styles.muted}>{dbb_filtered.length} gerçek ürün · {dbb_offers.length} doğrulanmış Ankara şube teklifi</Text>
@@ -350,23 +363,23 @@ export default function Dbb_App() {
     dbb_tab === 'courier' ? <Dbb_Courier dbb_user_id={dbb_user?.id || null} dbb_notice={dbb_set_notice} dbb_go_account={() => dbb_set_tab('account')} /> : dbb_account;
 
   return <View style={{ flex: 1, backgroundColor: dbb_theme.bg, paddingTop: dbb_insets.top }}>
-    <LinearGradient colors={['#11163B','#211849','#132E58']} start={{x:0,y:0}} end={{x:1,y:1}} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingTop: 12, paddingBottom: 13 }}>
-      <Pressable onPress={() => dbb_set_tab('home')}><View style={dbb_styles.row}><View style={{ backgroundColor: '#8F69FF', borderRadius: 12, padding: 7 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingTop: 12, paddingBottom: 13, backgroundColor:'#163B2A',borderBottomWidth:1,borderColor:dbb_theme.line }}>
+      <Pressable onPress={() => dbb_set_tab('home')}><View style={dbb_styles.row}><View style={{ backgroundColor: '#5DBA75', borderRadius: 12, padding: 7 }}>
         <Ionicons name="bag-handle" size={19} color="white" /></View><Text style={{ color: 'white', fontSize: 21, fontWeight: '900', letterSpacing: -.8 }}>DraBorn<Text style={{ color: dbb_theme.mint }}>Buy</Text></Text></View></Pressable>
-      <Pressable onPress={() => dbb_set_tab('basket')} style={{ borderRadius: 14, backgroundColor: '#1D2543', padding: 10, flexDirection: 'row', gap: 5 }}>
+      <Pressable onPress={() => dbb_set_tab('basket')} style={{ borderRadius: 14, backgroundColor: '#264E38', padding: 10, flexDirection: 'row', gap: 5 }}>
         <Ionicons name="basket-outline" size={21} color={dbb_theme.mint} /><Text style={{ color: 'white', fontWeight: '900' }}>{dbb_count}</Text></Pressable>
-    </LinearGradient>
+    </View>
     <ScrollView key={dbb_tab} contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 35, gap: 18, maxWidth: 780, width: '100%', alignSelf: 'center' }}>
-      {dbb_notice ? <Pressable onPress={() => dbb_set_notice('')} style={{ backgroundColor: '#302643', borderWidth: 1, borderColor: '#A176B7', borderRadius: 13, padding: 13, flexDirection: 'row', gap: 8 }}>
-        <Ionicons name="information-circle" color={dbb_theme.yellow} size={18} /><Text style={{ color: '#FCE9FF', flex: 1, lineHeight: 19, fontSize: 12 }}>{dbb_notice}</Text><Ionicons name="close" color="white" size={16} /></Pressable> : null}
+      {dbb_notice ? <Pressable onPress={() => dbb_set_notice('')} style={{ backgroundColor: '#31533C', borderWidth: 1, borderColor: '#9BB777', borderRadius: 13, padding: 13, flexDirection: 'row', gap: 8 }}>
+        <Ionicons name="information-circle" color={dbb_theme.yellow} size={18} /><Text style={{ color: dbb_theme.text, flex: 1, lineHeight: 19, fontSize: 12 }}>{dbb_notice}</Text><Ionicons name="close" color="white" size={16} /></Pressable> : null}
       {dbb_pending && <ActivityIndicator color={dbb_theme.mint} />}{dbb_content}
     </ScrollView>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderColor: '#455685', paddingTop: 9,
-      paddingBottom: Math.max(dbb_insets.bottom, 10), backgroundColor: '#151D40' }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderColor: dbb_theme.line, paddingTop: 9,
+      paddingBottom: Math.max(dbb_insets.bottom, 10), backgroundColor: '#122D23' }}>
       {dbb_tabs.map(dbb_nav => <Pressable key={dbb_nav.dbb_key} onPress={() => { dbb_set_scanner(false); dbb_set_tab(dbb_nav.dbb_key); if (dbb_nav.dbb_key==='search') dbb_refresh_catalog(); }}
-        style={{ alignItems: 'center', gap: 3, minWidth: 43, padding: 4, borderRadius:13,backgroundColor:dbb_tab===dbb_nav.dbb_key?'#4A3A8966':'transparent' }} accessibilityRole="tab" accessibilityState={{ selected: dbb_tab === dbb_nav.dbb_key }}>
-        <Ionicons name={dbb_nav.dbb_icon} size={21} color={dbb_tab === dbb_nav.dbb_key ? dbb_theme.mint : '#838CAA'} />
-        <Text style={{ color: dbb_tab === dbb_nav.dbb_key ? dbb_theme.mint : '#838CAA', fontSize: 10, fontWeight: dbb_tab === dbb_nav.dbb_key ? '900' : '600' }}>{dbb_nav.dbb_title}</Text>
+        style={{ alignItems: 'center', gap: 3, minWidth: 43, padding: 4, borderRadius:13,backgroundColor:dbb_tab===dbb_nav.dbb_key?'#2B5B3C':'transparent' }} accessibilityRole="tab" accessibilityState={{ selected: dbb_tab === dbb_nav.dbb_key }}>
+        <Ionicons name={dbb_nav.dbb_icon} size={21} color={dbb_tab === dbb_nav.dbb_key ? dbb_theme.mint : '#9BB9A1'} />
+        <Text style={{ color: dbb_tab === dbb_nav.dbb_key ? dbb_theme.mint : '#9BB9A1', fontSize: 10, fontWeight: dbb_tab === dbb_nav.dbb_key ? '900' : '600' }}>{dbb_nav.dbb_title}</Text>
       </Pressable>)}
     </View>
   </View>;

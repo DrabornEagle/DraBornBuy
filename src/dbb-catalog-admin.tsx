@@ -45,7 +45,7 @@ function Dbb_Toggle({dbb_label,dbb_value,dbb_change}:{dbb_label:string;dbb_value
     <Text style={{color:dbb_theme.text,flex:1,fontSize:13,fontWeight:'700'}}>{dbb_label}</Text></Pressable>;
 }
 
-export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_user_id:string;dbb_notice:(dbb_value:string)=>void;dbb_on_change:()=>void}) {
+export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice:dbb_global_notice,dbb_on_change}:{dbb_user_id:string;dbb_notice:(dbb_value:string)=>void;dbb_on_change:()=>void}) {
   const [dbb_tab,dbb_set_tab]=useState<Dbb_Tab>('settings');
   const [dbb_config,dbb_set_config]=useState<Dbb_Config>(dbb_default_config);
   const [dbb_fees,dbb_set_fees]=useState<Record<string,string>>({});
@@ -54,26 +54,30 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
   const [dbb_stores,dbb_set_stores]=useState<Dbb_Store[]>([]);
   const [dbb_products,dbb_set_products]=useState<Dbb_Product[]>([]);
   const [dbb_offers,dbb_set_offers]=useState<{dbb_id:string;dbb_store_id:string;dbb_product_id:string;dbb_price_kurus:number;dbb_in_stock:boolean;dbb_verified:boolean;dbb_checked_at:string;dbb_source_url:string;dbb_operator_note:string}[]>([]);
+  const [dbb_sync,dbb_set_sync]=useState<{dbb_status:string;dbb_discovered:number;dbb_finished_at:string;dbb_error:string}|null>(null);
   const [dbb_store,dbb_set_store]=useState<Dbb_StoreDraft>(dbb_empty_store);
   const [dbb_product,dbb_set_product]=useState<Dbb_ProductDraft>(dbb_empty_product);
   const [dbb_offer,dbb_set_offer]=useState<Dbb_OfferDraft>(dbb_empty_offer);
   const [dbb_busy,dbb_set_busy]=useState(false);
+  const [dbb_feedback,dbb_set_feedback]=useState('');
+  const dbb_notice=(dbb_message:string)=>{dbb_set_feedback(dbb_message);dbb_global_notice(dbb_message);};
   const dbb_refresh=useCallback(async()=>{
     if (!dbb_client) return;
-    const [dbb_a,dbb_b,dbb_c,dbb_d]=await Promise.all([
+    const [dbb_a,dbb_b,dbb_c,dbb_d,dbb_e]=await Promise.all([
       dbb_client.from('dbb_config').select('*').eq('dbb_key','ankara').single(),
       dbb_client.from('dbb_stores').select('*').order('dbb_created_at',{ascending:false}),
       dbb_client.from('dbb_products').select('*').order('dbb_created_at',{ascending:false}),
-      dbb_client.from('dbb_offers').select('dbb_id,dbb_store_id,dbb_product_id,dbb_price_kurus,dbb_in_stock,dbb_verified,dbb_checked_at,dbb_source_url,dbb_operator_note').order('dbb_checked_at',{ascending:false})
+      dbb_client.from('dbb_offers').select('dbb_id,dbb_store_id,dbb_product_id,dbb_price_kurus,dbb_in_stock,dbb_verified,dbb_checked_at,dbb_source_url,dbb_operator_note').order('dbb_checked_at',{ascending:false}),
+      dbb_client.from('dbb_sync_runs').select('dbb_status,dbb_discovered,dbb_finished_at,dbb_error').order('dbb_id',{ascending:false}).limit(1)
     ]);
-    const dbb_error=dbb_a.error||dbb_b.error||dbb_c.error||dbb_d.error;
+    const dbb_error=dbb_a.error||dbb_b.error||dbb_c.error||dbb_d.error||dbb_e.error;
     if (dbb_error) {dbb_notice(dbb_error.message);return;}
     const dbb_current=dbb_a.data as Dbb_Config;
     dbb_set_config(dbb_current);
     dbb_set_fees(Object.fromEntries(dbb_fee_fields.map(dbb_field=>[dbb_field.dbb_key,dbb_tl(dbb_current[dbb_field.dbb_key] as number)])));
     dbb_set_rate(String(dbb_current.dbb_service_rate_bps/100).replace('.',','));dbb_set_age(String(dbb_current.dbb_max_age_hours));
-    dbb_set_stores(dbb_b.data||[]);dbb_set_products(dbb_c.data||[]);dbb_set_offers(dbb_d.data||[]);
-  },[dbb_notice]);
+    dbb_set_stores(dbb_b.data||[]);dbb_set_products(dbb_c.data||[]);dbb_set_offers(dbb_d.data||[]);dbb_set_sync(dbb_e.data?.[0]||null);
+  },[dbb_global_notice]);
   useEffect(()=>{dbb_refresh();},[dbb_refresh]);
   const dbb_complete=async(dbb_message:string)=>{dbb_notice(dbb_message);await dbb_refresh();dbb_on_change();};
   const dbb_save_settings=async()=>{
@@ -86,17 +90,26 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
       dbb_notice('Hizmet oranı %0–30, teklif geçerliliği 1–72 saat olmalı.');return;
     }
     const dbb_iban=dbb_config.dbb_iban.toUpperCase().replace(/\s/g,'');
-    if ((dbb_iban && !dbb_valid_iban(dbb_iban)) || (dbb_config.dbb_enabled && (!dbb_iban||!dbb_config.dbb_bank_name.trim()||!dbb_config.dbb_account_holder.trim()))) {
-      dbb_notice('Geçerli TR IBAN, banka adı ve işletme hesap sahibi bilgilerini kontrol et.');return;
-    }
-    if (dbb_config.dbb_enabled && !dbb_offers.some(dbb_offer=>dbb_offer.dbb_verified&&dbb_offer.dbb_in_stock&&
-      dbb_stores.some(dbb_store=>dbb_store.dbb_id===dbb_offer.dbb_store_id&&dbb_store.dbb_active))) {
-      dbb_notice('Siparişi açmadan önce aktif Ankara mağazasında fiyatı ve stoğu doğrulanmış teklif gerekli.');return;
-    }
-    dbb_set_busy(true);
-    const {error:dbb_error}=await dbb_client.from('dbb_config').update({...dbb_config,...dbb_values,dbb_iban,dbb_service_rate_bps,dbb_max_age_hours}).eq('dbb_key','ankara');
-    dbb_set_busy(false);
-    if (dbb_error) dbb_notice(dbb_error.message);else await dbb_complete('Ankara ödeme ve ücret ayarları kaydedildi.');
+    if (dbb_iban && !dbb_valid_iban(dbb_iban)) {dbb_notice('IBAN kontrol basamağı geçersiz. IBAN’ı kontrol et; diğer ayarlar henüz kaydedilmedi.');return;}
+    const dbb_bank_ready=Boolean(dbb_iban&&dbb_config.dbb_bank_name.trim()&&dbb_config.dbb_account_holder.trim());
+    const dbb_ready_offer=dbb_offers.some(dbb_offer=>dbb_offer.dbb_verified&&dbb_offer.dbb_in_stock&&
+      Date.now()-new Date(dbb_offer.dbb_checked_at).getTime()<=dbb_max_age_hours*3600000&&
+      dbb_stores.some(dbb_store=>dbb_store.dbb_id===dbb_offer.dbb_store_id&&dbb_store.dbb_active));
+    const dbb_enabled=dbb_config.dbb_enabled&&dbb_ready_offer&&dbb_bank_ready;
+    dbb_set_busy(true);dbb_set_feedback('Kaydediliyor…');
+    try {
+      const {data:dbb_saved,error:dbb_error}=await dbb_client.from('dbb_config')
+        .update({...dbb_config,...dbb_values,dbb_iban,dbb_service_rate_bps,dbb_max_age_hours,dbb_enabled})
+        .eq('dbb_key','ankara').select('dbb_key,dbb_enabled').single();
+      if (dbb_error) throw dbb_error;
+      if (!dbb_saved) throw new Error('Kayıt doğrulanamadı. Yönetici oturumunu kontrol et.');
+      await dbb_complete(dbb_config.dbb_enabled&&!dbb_bank_ready?
+        'Girilen ödeme ve ücret bilgileri kaydedildi. Sipariş kapalı: geçerli IBAN, banka adı ve hesap sahibi gerekli.':
+        dbb_config.dbb_enabled&&!dbb_ready_offer?
+        'IBAN ve ücretler kaydedildi. Sipariş kapalı: önce aktif Ankara şubesi ve ayarlanan sürede doğrulanmış stoklu fiyat ekle.':
+        dbb_enabled?'Ayarlar kaydedildi; Ankara siparişleri açıldı.':'IBAN ve ücretler kaydedildi; siparişler kapalı.');
+    } catch(dbb_error) {dbb_notice((dbb_error as Error).message);}
+    finally {dbb_set_busy(false);}
   };
   const dbb_find_store=async()=>{
     try {const dbb_locations=await dbb_geocode(dbb_store.dbb_address);if (!dbb_locations.length) throw new Error('Adres için Ankara konumu bulunamadı.');
@@ -154,12 +167,12 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
     dbb_product_id:dbb_value.dbb_product_id,dbb_price:dbb_tl(dbb_value.dbb_price_kurus),dbb_in_stock:dbb_value.dbb_in_stock,
     dbb_verified:dbb_value.dbb_verified,dbb_source_url:dbb_value.dbb_source_url,dbb_operator_note:dbb_value.dbb_operator_note});
   return <Dbb_Section dbb_title="DraBornBuy yönetimi" dbb_caption="Ankara mağazalarını, ürün görsellerini, doğrulanmış fiyatları ve ödeme bilgilerini buradan yönet.">
-    <Dbb_Card dbb_style={{backgroundColor:'#1B2043',borderColor:'#8C6CFF88'}}>
+    <Dbb_Card dbb_style={{backgroundColor:dbb_theme.panel,borderColor:dbb_theme.line}}>
       <Dbb_Pill dbb_label="YÖNETİCİ ERİŞİMİ" dbb_tone="mint" />
       <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{([
         ['settings','Ödeme & ücret'],['stores','Mağazalar'],['products','Ürünler'],['offers','Fiyat & stok']
-      ] as [Dbb_Tab,string][]).map(([dbb_key,dbb_label])=><Pressable key={dbb_key} onPress={()=>dbb_set_tab(dbb_key)}
-        style={{borderRadius:12,paddingHorizontal:11,paddingVertical:10,backgroundColor:dbb_tab===dbb_key?dbb_theme.purple:'#292F52'}}>
+      ] as [Dbb_Tab,string][]).map(([dbb_key,dbb_label])=><Pressable key={dbb_key} onPress={()=>{dbb_set_tab(dbb_key);dbb_set_feedback('');}}
+        style={{borderRadius:12,paddingHorizontal:11,paddingVertical:10,backgroundColor:dbb_tab===dbb_key?'#32754C':'#244437'}}>
         <Text style={{color:'white',fontSize:12,fontWeight:'800'}}>{dbb_label}</Text></Pressable>)}</View>
       {dbb_tab==='settings'&&<View style={{gap:10}}>
         <Text style={dbb_styles.itemTitle}>Ödeme hesabı</Text>
@@ -174,8 +187,9 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
         <Dbb_Field dbb_label="Teklif geçerliliği · saat (1–72)" dbb_value={dbb_age} dbb_change={dbb_set_age} dbb_keyboard="number-pad" />
         <Dbb_Toggle dbb_label="Ankara'da gerçek siparişi aç" dbb_value={dbb_config.dbb_enabled}
           dbb_change={()=>dbb_set_config({...dbb_config,dbb_enabled:!dbb_config.dbb_enabled})} />
-        <Text style={dbb_styles.muted}>IBAN, doğrulanmış yerel teklifler ve hazır kurye operasyonu olmadan siparişi açma.</Text>
-        <Dbb_Button dbb_title="Ayarları kaydet" dbb_icon="save-outline" dbb_onPress={dbb_save_settings} dbb_disabled={dbb_busy} />
+        <Text style={dbb_styles.muted}>Hazırlık: {dbb_stores.filter(dbb_item=>dbb_item.dbb_active).length} aktif şube · {dbb_offers.filter(dbb_item=>dbb_item.dbb_verified&&dbb_item.dbb_in_stock&&Date.now()-new Date(dbb_item.dbb_checked_at).getTime()<=Number(dbb_age)*3600000).length} güncel stoklu teklif. Ödeme bilgilerini şimdi kaydedebilirsin; sipariş için ikisi de gerekli.</Text>
+        <Dbb_Button dbb_title={dbb_busy?'Kaydediliyor…':'Ayarları kaydet'} dbb_icon="save-outline" dbb_onPress={dbb_save_settings} dbb_disabled={dbb_busy} />
+        {dbb_feedback?<View accessibilityRole="alert" style={{backgroundColor:'#254735',padding:13,borderRadius:12,borderWidth:1,borderColor:dbb_theme.mint}}><Text selectable style={{color:dbb_theme.text,lineHeight:20}}>{dbb_feedback}</Text></View>:null}
       </View>}
       {dbb_tab==='stores'&&<View style={{gap:10}}>
         <Text style={dbb_styles.itemTitle}>{dbb_store.dbb_id?'Mağazayı düzenle':'Yeni Ankara mağazası'}</Text>
@@ -186,11 +200,16 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
         <Dbb_Field dbb_label="Boylam" dbb_value={dbb_store.dbb_lon} dbb_change={dbb_value=>dbb_set_store({...dbb_store,dbb_lon:dbb_value})} dbb_keyboard="decimal-pad" />
         <Dbb_Toggle dbb_label="Mağaza aktif" dbb_value={dbb_store.dbb_active} dbb_change={()=>dbb_set_store({...dbb_store,dbb_active:!dbb_store.dbb_active})} />
         <Dbb_Button dbb_title="Mağazayı kaydet" dbb_onPress={dbb_save_store} dbb_disabled={dbb_busy} />
+        {dbb_feedback?<Text selectable accessibilityRole="alert" style={{color:dbb_theme.yellow,lineHeight:20}}>{dbb_feedback}</Text>:null}
         {dbb_store.dbb_id&&<Dbb_Button dbb_title="Yeni mağazaya geç" dbb_kind="ghost" dbb_onPress={()=>dbb_set_store(dbb_empty_store)} />}
-        {dbb_stores.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_store(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#2A3153'}}>
+        {dbb_stores.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_store(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#254735'}}>
           <Text style={dbb_styles.itemTitle}>{dbb_item.dbb_name} · {dbb_item.dbb_active?'Aktif':'Pasif'}</Text><Text style={dbb_styles.muted}>{dbb_item.dbb_address}</Text></Pressable>)}
       </View>}
       {dbb_tab==='products'&&<View style={{gap:10}}>
+        <Dbb_Card dbb_style={{backgroundColor:'#254735'}}><Text style={dbb_styles.itemTitle}>Otomatik katalog taraması</Text>
+          <Text style={dbb_styles.muted}>Altunbilekler ürün adları ve görselleri 6 saatte bir yenilenir. Şube fiyatı ve stok otomatik doğrulanmaz.</Text>
+          <Text style={{color:dbb_theme.yellow,fontSize:12}}>{dbb_sync?`Son tarama: ${dbb_sync.dbb_status} · ${dbb_sync.dbb_discovered} ürün · ${dbb_sync.dbb_finished_at?new Date(dbb_sync.dbb_finished_at).toLocaleString('tr-TR'):'sürüyor'}`:'Tarama kaydı bekleniyor'}</Text>
+          {dbb_sync?.dbb_error?<Text selectable style={dbb_styles.muted}>Erişilemeyen kategoriler: {dbb_sync.dbb_error}</Text>:null}</Dbb_Card>
         <Text style={dbb_styles.itemTitle}>{dbb_product.dbb_id?'Ürünü düzenle':'Yeni ürün'}</Text>
         {(['dbb_name','dbb_brand','dbb_size','dbb_category','dbb_barcode','dbb_image_url','dbb_source_url'] as const).map((dbb_key,dbb_index)=><Dbb_Field key={dbb_key}
           dbb_label={['Ürün adı','Marka','Boyut / paket','Kategori','Barkod (isteğe bağlı)','Ürün fotoğrafı HTTPS URL','Üretici veya mağaza ürün sayfası HTTPS URL'][dbb_index]}
@@ -199,8 +218,9 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
         {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:110,height:110,borderRadius:16,backgroundColor:'white'}} resizeMode="contain" />:null}
         <Dbb_Toggle dbb_label="Ürün görünür" dbb_value={dbb_product.dbb_active} dbb_change={()=>dbb_set_product({...dbb_product,dbb_active:!dbb_product.dbb_active})} />
         <Dbb_Button dbb_title="Ürünü kaydet" dbb_onPress={dbb_save_product} dbb_disabled={dbb_busy} />
+        {dbb_feedback?<Text selectable accessibilityRole="alert" style={{color:dbb_theme.yellow,lineHeight:20}}>{dbb_feedback}</Text>:null}
         {dbb_product.dbb_id&&<Dbb_Button dbb_title="Yeni ürüne geç" dbb_kind="ghost" dbb_onPress={()=>dbb_set_product(dbb_empty_product)} />}
-        {dbb_products.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_product(dbb_item)} style={{flexDirection:'row',gap:10,alignItems:'center',padding:8,borderRadius:14,backgroundColor:'#2A3153'}}>
+        {dbb_products.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_product(dbb_item)} style={{flexDirection:'row',gap:10,alignItems:'center',padding:8,borderRadius:14,backgroundColor:'#254735'}}>
           {dbb_item.dbb_image_url?<Image source={{uri:dbb_item.dbb_image_url}} style={{width:44,height:44,borderRadius:9,backgroundColor:'white'}} resizeMode="contain" />:<Ionicons name="cube-outline" size={26} color={dbb_theme.yellow} />}
           <Text style={[dbb_styles.itemTitle,{flex:1,fontSize:13}]}>{dbb_item.dbb_name} · {dbb_item.dbb_size}</Text></Pressable>)}
       </View>}
@@ -210,12 +230,12 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
         <Text style={dbb_styles.itemTitle}>Mağaza seç</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{dbb_stores.map(dbb_item=><Pressable key={dbb_item.dbb_id}
           onPress={()=>dbb_set_offer({...dbb_offer,dbb_store_id:dbb_item.dbb_id})}
-          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_store_id===dbb_item.dbb_id?dbb_theme.purple:'#2A3153'}}>
+          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_store_id===dbb_item.dbb_id?'#32754C':'#254735'}}>
           <Text style={{color:'white',fontSize:12}}>{dbb_item.dbb_name}</Text></Pressable>)}</View>
         <Text style={dbb_styles.itemTitle}>Ürün seç</Text>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>{dbb_products.map(dbb_item=><Pressable key={dbb_item.dbb_id}
           onPress={()=>dbb_set_offer({...dbb_offer,dbb_product_id:dbb_item.dbb_id})}
-          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_product_id===dbb_item.dbb_id?dbb_theme.purple:'#2A3153'}}>
+          style={{padding:10,borderRadius:10,backgroundColor:dbb_offer.dbb_product_id===dbb_item.dbb_id?'#32754C':'#254735'}}>
           <Text style={{color:'white',fontSize:12}}>{dbb_item.dbb_name} {dbb_item.dbb_size}</Text></Pressable>)}</View>
         <Dbb_Field dbb_label="Şubede gözlenen nihai fiyat · TL" dbb_value={dbb_offer.dbb_price} dbb_change={dbb_value=>dbb_set_offer({...dbb_offer,dbb_price:dbb_value})} dbb_keyboard="decimal-pad" />
         <Dbb_Field dbb_label="Kaynak URL (isteğe bağlı)" dbb_value={dbb_offer.dbb_source_url} dbb_change={dbb_value=>dbb_set_offer({...dbb_offer,dbb_source_url:dbb_value})} dbb_keyboard="url" />
@@ -223,8 +243,9 @@ export function Dbb_CatalogAdmin({dbb_user_id,dbb_notice,dbb_on_change}:{dbb_use
         <Dbb_Toggle dbb_label="Stok mağazada görüldü" dbb_value={dbb_offer.dbb_in_stock} dbb_change={()=>dbb_set_offer({...dbb_offer,dbb_in_stock:!dbb_offer.dbb_in_stock})} />
         <Dbb_Toggle dbb_label="Fiyat ve stok doğrulandı" dbb_value={dbb_offer.dbb_verified} dbb_change={()=>dbb_set_offer({...dbb_offer,dbb_verified:!dbb_offer.dbb_verified})} />
         <Dbb_Button dbb_title="Teklifi kaydet" dbb_onPress={dbb_save_offer} dbb_disabled={dbb_busy} />
+        {dbb_feedback?<Text selectable accessibilityRole="alert" style={{color:dbb_theme.yellow,lineHeight:20}}>{dbb_feedback}</Text>:null}
         {dbb_offer.dbb_id&&<Dbb_Button dbb_title="Yeni teklife geç" dbb_kind="ghost" dbb_onPress={()=>dbb_set_offer(dbb_empty_offer)} />}
-        {dbb_offers.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_offer(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#2A3153'}}>
+        {dbb_offers.map(dbb_item=><Pressable key={dbb_item.dbb_id} onPress={()=>dbb_edit_offer(dbb_item)} style={{padding:12,borderRadius:14,backgroundColor:'#254735'}}>
           <Text style={dbb_styles.itemTitle}>{dbb_products.find(dbb_p=>dbb_p.dbb_id===dbb_item.dbb_product_id)?.dbb_name} · {dbb_stores.find(dbb_s=>dbb_s.dbb_id===dbb_item.dbb_store_id)?.dbb_name}</Text>
           <Text style={dbb_styles.muted}>{dbb_tl(dbb_item.dbb_price_kurus)} TL · {dbb_item.dbb_verified&&dbb_item.dbb_in_stock?'Doğrulanmış':'Kapalı'} · {new Date(dbb_item.dbb_checked_at).toLocaleString('tr-TR')}</Text></Pressable>)}
       </View>}

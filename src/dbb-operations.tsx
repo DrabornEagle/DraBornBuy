@@ -107,7 +107,7 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
       <Dbb_Card><Text style={{ fontSize: 35 }}>📦</Text><Text style={dbb_styles.itemTitle}>Henüz sipariş yok</Text>
         <Text style={dbb_styles.muted}>Gerçek mağaza fiyatları açıldığında tüm ilerlemeyi burada canlı izleyeceksin.</Text></Dbb_Card> : <>
       {dbb_orders.length > 1 && dbb_orders.map(dbb_item => <Pressable key={dbb_item.dbb_id} onPress={() => dbb_set_selected(dbb_item.dbb_id)}
-        style={{ padding: 13, borderRadius: 13, backgroundColor: dbb_selected === dbb_item.dbb_id ? '#443477' : dbb_theme.panel }}>
+        style={{ padding: 13, borderRadius: 13, backgroundColor: dbb_selected === dbb_item.dbb_id ? '#2D6645' : dbb_theme.panel }}>
         <Text style={{ color:'white', fontWeight:'800' }}>#{dbb_item.dbb_code} · {dbb_steps[dbb_item.dbb_status]}</Text></Pressable>)}
       {dbb_order && <><Dbb_Card dbb_style={{ borderColor: dbb_theme.mint + '66' }}>
         <Dbb_Pill dbb_label={dbb_steps[dbb_order.dbb_status]?.toLocaleUpperCase('tr-TR') || dbb_order.dbb_status} dbb_tone="mint" />
@@ -140,8 +140,8 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
             <Text style={dbb_styles.muted}>{dbb_event.dbb_note} · {dbb_date(dbb_event.dbb_created_at)}</Text></View></View>)}
       </Dbb_Card></Dbb_Section>
       {dbb_order.dbb_courier_id && !['completed','canceled'].includes(dbb_order.dbb_status) && <Dbb_Section dbb_title="Kurye ile sohbet"><Dbb_Card>
-        {dbb_messages.length ? dbb_messages.map(dbb_chat => <View key={dbb_chat.dbb_id} style={{ alignSelf:dbb_chat.dbb_sender_id === dbb_user_id ? 'flex-end' : 'flex-start', backgroundColor:dbb_chat.dbb_sender_id === dbb_user_id ? '#543D90' : '#27314C', borderRadius:15, padding:11, maxWidth:'87%' }}>
-          <Text style={{ color:'white' }}>{dbb_chat.dbb_body}</Text><Text style={{ color:'#B8B6D0',fontSize:10 }}>{dbb_date(dbb_chat.dbb_created_at)}</Text></View>) : <Text style={dbb_styles.muted}>Mesajlar burada görünür.</Text>}
+        {dbb_messages.length ? dbb_messages.map(dbb_chat => <View key={dbb_chat.dbb_id} style={{ alignSelf:dbb_chat.dbb_sender_id === dbb_user_id ? 'flex-end' : 'flex-start', backgroundColor:dbb_chat.dbb_sender_id === dbb_user_id ? '#2D6645' : '#294A39', borderRadius:15, padding:11, maxWidth:'87%' }}>
+          <Text style={{ color:'white' }}>{dbb_chat.dbb_body}</Text><Text style={{ color:dbb_theme.muted,fontSize:10 }}>{dbb_date(dbb_chat.dbb_created_at)}</Text></View>) : <Text style={dbb_styles.muted}>Mesajlar burada görünür.</Text>}
         <TextInput style={dbb_styles.input} value={dbb_message} onChangeText={dbb_set_message} placeholder="Kuryeye mesaj yaz..." placeholderTextColor="#7580A0" />
         <Dbb_Button dbb_title="Gönder" dbb_onPress={() => dbb_send(dbb_message)} dbb_disabled={!dbb_message.trim()} />
       </Dbb_Card></Dbb_Section>}
@@ -310,7 +310,7 @@ export function Dbb_Courier({ dbb_user_id, dbb_notice, dbb_go_account }: {
           <Dbb_Button dbb_title="Navigasyonu aç" dbb_icon="navigate" dbb_kind="ghost" dbb_onPress={() => dbb_navigate(dbb_active.dbb_status === 'delivery' ? undefined : dbb_stop)} />
           {dbb_active.dbb_status === 'store_trip' && <Dbb_Button dbb_title="Mağazaya ulaştım" dbb_kind="mint" dbb_onPress={() => dbb_advance('shopping')} />}
           {dbb_active.dbb_status === 'shopping' && <>
-            {dbb_items.filter(dbb_item => dbb_item.dbb_store_id === dbb_stop?.dbb_id).map(dbb_item => <View key={dbb_item.dbb_id} style={{backgroundColor:'#1A2337',borderRadius:13,padding:12,gap:7}}>
+            {dbb_items.filter(dbb_item => dbb_item.dbb_store_id === dbb_stop?.dbb_id).map(dbb_item => <View key={dbb_item.dbb_id} style={{backgroundColor:'#244536',borderRadius:13,padding:12,gap:7}}>
               <Text style={dbb_styles.itemTitle}>{dbb_item.dbb_pick_status === 'found' ? '✓ ' : dbb_item.dbb_pick_status === 'missing' ? '× ' : ''}{dbb_item.dbb_product_name} ×{dbb_item.dbb_quantity}</Text>
               <Text style={dbb_styles.muted}>Tahmini birim: {dbb_lira(dbb_item.dbb_unit_price_kurus)}</Text>
               <TextInput style={dbb_styles.input} value={dbb_price[dbb_item.dbb_id] ?? String(dbb_item.dbb_unit_price_kurus / 100)} onChangeText={dbb_value => dbb_set_price(dbb_old => ({...dbb_old,[dbb_item.dbb_id]:dbb_value}))} keyboardType="decimal-pad" placeholder="Gerçek birim fiyat TL" placeholderTextColor="#7580A0" />
@@ -330,7 +330,7 @@ export function Dbb_Courier({ dbb_user_id, dbb_notice, dbb_go_account }: {
           <Dbb_Section dbb_title="Müşteri ile mesajlaş"><View style={{gap:10}}>
             {dbb_chats.map(dbb_chat => <Text key={dbb_chat.dbb_id} style={{color:dbb_chat.dbb_sender_id === dbb_user_id ? dbb_theme.mint : 'white'}}>{dbb_chat.dbb_sender_id === dbb_user_id ? 'Ben' : 'Müşteri'}: {dbb_chat.dbb_body}</Text>)}
             <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{['Ürün stokta yok.','Alternatif gönderebilir miyim?','Kasadayım.','5 dakika içinde oradayım.'].map(dbb_text =>
-              <Pressable key={dbb_text} onPress={() => dbb_send(dbb_text)} style={{padding:8,backgroundColor:'#263550',borderRadius:10}}><Text style={{color:'white',fontSize:12}}>{dbb_text}</Text></Pressable>)}</View>
+              <Pressable key={dbb_text} onPress={() => dbb_send(dbb_text)} style={{padding:8,backgroundColor:'#2D6645',borderRadius:10}}><Text style={{color:'white',fontSize:12}}>{dbb_text}</Text></Pressable>)}</View>
             <TextInput style={dbb_styles.input} value={dbb_message} onChangeText={dbb_set_message} placeholder="Mesaj..." placeholderTextColor="#7580A0" />
             <Dbb_Button dbb_title="Gönder" dbb_onPress={() => dbb_send(dbb_message.trim())} dbb_disabled={!dbb_message.trim()} />
           </View></Dbb_Section>

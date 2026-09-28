@@ -1,15 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export const dbb_theme = { bg: '#101632', panel: '#1B2446', line: '#40507A', text: '#FFFFFF', muted: '#BCC8E8',
-  purple: '#956BFF', mint: '#58F2CB', yellow: '#FFD273', pink: '#FF7CA8', blue: '#6DCBFF' };
+export const dbb_theme = { bg: '#0C211B', panel: '#163329', line: '#315747', text: '#F7F7EE', muted: '#B6CBBB',
+  purple: '#8DD19B', mint: '#71E7AB', yellow: '#FFD37A', pink: '#FF997E', blue: '#A5DAD1' };
 
 export function Dbb_Pill({ dbb_label, dbb_tone = 'purple' }: { dbb_label: string; dbb_tone?: 'purple' | 'mint' | 'pink' | 'yellow' }) {
   const dbb_color = { purple: dbb_theme.purple, mint: dbb_theme.mint, pink: dbb_theme.pink, yellow: dbb_theme.yellow }[dbb_tone];
-  return <View style={{ backgroundColor: `${dbb_color}22`, borderColor: `${dbb_color}70`, borderWidth: 1, borderRadius: 20,
-    paddingHorizontal: 11, paddingVertical: 6, alignSelf: 'flex-start' }}><Text style={{ color: dbb_color, fontSize: 10, fontWeight: '900', letterSpacing: 1.1 }}>{dbb_label}</Text></View>;
+  return <View style={{ backgroundColor: `${dbb_color}18`, borderColor: `${dbb_color}66`, borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 11, paddingVertical: 6, alignSelf: 'flex-start' }}><Text style={{ color: dbb_color, fontSize: 10, fontWeight: '900', letterSpacing: .7 }}>{dbb_label}</Text></View>;
 }
 
 export function Dbb_Card({ children, dbb_style }: { children: React.ReactNode; dbb_style?: object }) {
@@ -20,16 +19,13 @@ export function Dbb_Button({ dbb_title, dbb_onPress, dbb_icon, dbb_kind = 'prima
   dbb_title: string; dbb_onPress: () => void; dbb_icon?: keyof typeof Ionicons.glyphMap;
   dbb_kind?: 'primary' | 'ghost' | 'mint' | 'danger'; dbb_disabled?: boolean;
 }) {
-  const dbb_colors = dbb_kind === 'mint' ? [dbb_theme.mint, '#8CF3AD'] as const :
-    dbb_kind === 'danger' ? [dbb_theme.pink, '#EB4779'] as const : ['#A282FF', '#7559ED'] as const;
+  const dbb_color = dbb_kind === 'danger' ? dbb_theme.pink : dbb_kind === 'mint' ? dbb_theme.mint : dbb_theme.yellow;
   return <Pressable onPress={dbb_onPress} disabled={dbb_disabled} accessibilityRole="button" accessibilityLabel={dbb_title}
-    style={({ pressed }) => [{ opacity: dbb_disabled ? .45 : pressed ? .72 : 1, borderRadius: 16, overflow: 'hidden' }]}>
-    {dbb_kind === 'ghost' ? <View style={dbb_styles.ghostButton}>{dbb_icon && <Ionicons name={dbb_icon} size={17} color={dbb_theme.text} />}
-      <Text style={dbb_styles.ghostText}>{dbb_title}</Text></View> :
-      <LinearGradient colors={dbb_colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={dbb_styles.button}>
-        {dbb_icon && <Ionicons name={dbb_icon} size={18} color="#090E1D" />}
-        <Text style={dbb_styles.buttonText}>{dbb_title}</Text>
-      </LinearGradient>}
+    style={({ pressed }) => [{ opacity: dbb_disabled ? .48 : pressed ? .76 : 1, borderRadius: 15, overflow: 'hidden' }]}>
+    <View style={dbb_kind === 'ghost' ? dbb_styles.ghostButton : [dbb_styles.button, { backgroundColor: dbb_color }]}>
+      {dbb_icon && <Ionicons name={dbb_icon} size={18} color={dbb_kind === 'ghost' ? dbb_theme.text : '#15362A'} />}
+      <Text style={dbb_kind === 'ghost' ? dbb_styles.ghostText : dbb_styles.buttonText}>{dbb_title}</Text>
+    </View>
   </Pressable>;
 }
 
@@ -39,42 +35,32 @@ export function Dbb_Section({ dbb_title, dbb_caption, children }: { dbb_title: s
 }
 
 export function Dbb_Hero({ dbb_onSearch }: { dbb_onSearch: () => void }) {
-  const dbb_pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const dbb_loop = Animated.loop(Animated.sequence([
-      Animated.timing(dbb_pulse, { toValue: 1, duration: 1800, useNativeDriver: true }),
-      Animated.timing(dbb_pulse, { toValue: 0, duration: 1800, useNativeDriver: true })]));
-    dbb_loop.start(); return () => dbb_loop.stop();
-  }, [dbb_pulse]);
-  return <LinearGradient colors={['#2466A6','#6247C8','#A954BD','#E36C99']} start={{x:0,y:0}} end={{x:1,y:1}} style={dbb_styles.hero}>
-    <View style={{ position: 'absolute', right: -78, top: -50, width: 220, height: 220, borderRadius: 110, backgroundColor: '#FFFFFF28' }} />
-    <View style={{ position: 'absolute', right: 55, bottom: -75, width: 160, height: 160, borderRadius: 80, backgroundColor: '#77ECFF38' }} />
-    <Animated.View style={{position:'absolute',right:18,top:83,transform:[{translateY:dbb_pulse.interpolate({inputRange:[0,1],outputRange:[0,-8]})}]}}>
-      <View style={{width:83,height:83,borderRadius:28,backgroundColor:'#FFFFFF2B',borderWidth:1,borderColor:'#FFFFFF70',alignItems:'center',justifyContent:'center',transform:[{rotate:'12deg'}]}}>
-        <Ionicons name="bag-handle" size={38} color="#FFFFFF" /></View></Animated.View>
-    <Dbb_Pill dbb_label="ANKARA'DA AKILLI ALIŞVERİŞ" dbb_tone="mint" />
-    <Text style={{ color: 'white', fontSize: 35, lineHeight: 40, fontWeight: '900', letterSpacing: -.9, maxWidth: 265 }}>Ne almak{ '\n' }istiyorsun?</Text>
-    <Text style={{ color: '#F4EEFF', fontSize: 14, lineHeight: 21, maxWidth: 270 }}>Sen arama. Ürünleri, mağazaları ve kurye rotasını birlikte hesaplayalım.</Text>
+  return <View style={dbb_styles.hero}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Dbb_Pill dbb_label="ANKARA MARKET" dbb_tone="yellow" />
+      <Ionicons name="leaf" color={dbb_theme.yellow} size={26} />
+    </View>
+    <Text style={{ color: dbb_theme.text, fontSize: 34, lineHeight: 39, fontWeight: '900', letterSpacing: -.8 }}>Ne almak istiyorsun?</Text>
+    <Text style={{ color: '#D5E8CE', fontSize: 14, lineHeight: 21 }}>Marketi, ürün fiyatını ve kurye ücretini birlikte karşılaştır.</Text>
     <Pressable onPress={dbb_onSearch} style={dbb_styles.heroSearch} accessibilityRole="button">
-      <Ionicons name="search" size={21} color={dbb_theme.purple} />
-      <Text style={{ color: '#6A7194', flex: 1, fontWeight: '600' }}>Ürün, marka veya barkod ara...</Text>
-      <Animated.View style={{ transform: [{ scale: dbb_pulse.interpolate({inputRange:[0,1],outputRange:[.9,1.1]}) }] }}>
-        <Ionicons name="arrow-forward-circle" size={28} color={dbb_theme.purple} /></Animated.View>
+      <Ionicons name="search" size={21} color="#285E42" />
+      <Text style={{ color: '#596C5C', flex: 1, fontWeight: '600' }}>Ürün, marka veya barkod ara</Text>
+      <Ionicons name="arrow-forward" size={20} color="#285E42" />
     </Pressable>
-  </LinearGradient>;
+  </View>;
 }
 
 export const dbb_styles = StyleSheet.create({
-  card: { backgroundColor: dbb_theme.panel, borderRadius: 24, borderWidth: 1, borderColor: dbb_theme.line, padding: 18, gap: 12 },
-  sectionTitle: { color: dbb_theme.text, fontSize: 23, fontWeight: '900', letterSpacing: -.5 },
+  card: { backgroundColor: dbb_theme.panel, borderRadius: 21, borderWidth: 1, borderColor: dbb_theme.line, padding: 17, gap: 12 },
+  sectionTitle: { color: dbb_theme.text, fontSize: 23, fontWeight: '900', letterSpacing: -.4 },
   caption: { color: dbb_theme.muted, fontSize: 12, lineHeight: 18 },
-  button: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 15, borderRadius: 16 },
-  buttonText: { color: '#0D1327', fontWeight: '900', fontSize: 14 },
-  ghostButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: dbb_theme.line, backgroundColor: '#1A2037' },
+  button: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 15, borderRadius: 15 },
+  buttonText: { color: '#15362A', fontWeight: '900', fontSize: 14 },
+  ghostButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 15, borderWidth: 1, borderColor: dbb_theme.line, backgroundColor: '#203C30' },
   ghostText: { color: dbb_theme.text, fontWeight: '700', fontSize: 13 },
-  hero: { borderRadius: 30, padding: 24, gap: 19, overflow: 'hidden', minHeight: 320, justifyContent: 'space-between', borderWidth: 1, borderColor: '#F8C5FF88' },
-  heroSearch: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8F8FF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, minHeight: 57 },
-  input: { backgroundColor: '#171D33', color: dbb_theme.text, borderWidth: 1, borderColor: dbb_theme.line, borderRadius: 14, paddingHorizontal: 15, paddingVertical: 13, fontSize: 15 },
+  hero: { borderRadius: 25, padding: 22, gap: 20, backgroundColor: '#245B3B', minHeight: 265, justifyContent: 'space-between', borderWidth: 1, borderColor: '#6EAA66' },
+  heroSearch: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F3F6E9', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, minHeight: 54 },
+  input: { backgroundColor: '#10261F', color: dbb_theme.text, borderWidth: 1, borderColor: dbb_theme.line, borderRadius: 13, paddingHorizontal: 15, paddingVertical: 13, fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   heading: { color: dbb_theme.text, fontSize: 28, fontWeight: '900', letterSpacing: -.7 },
   itemTitle: { color: dbb_theme.text, fontSize: 16, fontWeight: '800' },
