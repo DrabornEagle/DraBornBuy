@@ -1,4 +1,5 @@
 name: DraBornBuy v0.2 Expo 58 sync
+# Final v0.2 dependency alignment after TS5/TS6 config repair.
 
 on:
   push:
