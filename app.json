@@ -3,14 +3,47 @@
     "name": "DraBornBuy",
     "slug": "drabornbuy",
     "scheme": "drabornbuy",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "ios": { "supportsTablet": true },
-    "android": { "package": "com.draborneagle.drabornbuy", "versionCode": 1, "edgeToEdgeEnabled": true },
-    "web": { "bundler": "metro", "output": "static", "name": "DraBornBuy" },
-    "plugins": ["expo-router", ["expo-camera", { "cameraPermission": "Ürün barkodunu taramak için kamera izni gerekiyor." }], ["expo-image-picker", { "photosPermission": "Dekont seçmek için galeri izni gerekiyor." }], ["expo-location", { "locationWhenInUsePermission": "Ankara içindeki teslimat noktanı seçmek için konum izni gerekiyor." }]],
-    "experiments": { "typedRoutes": true, "baseUrl": "/DraBornBuy" }
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.draborneagle.drabornbuy",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "name": "DraBornBuy"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "DraBornBuy barkod taramak için kamerayı kullanır."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DraBornBuy dekont yüklemek için fotoğraflarına erişir."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DraBornBuy teslimat ve kurye rotası için konumunu kullanır."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "baseUrl": "/DraBornBuy"
+    }
   }
 }
