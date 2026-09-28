@@ -1,4 +1,9 @@
 import type { Dbb_Assignment, Dbb_BasketItem, Dbb_Coordinates, Dbb_Offer, Dbb_Quote, Dbb_Store } from './dbb-model';
+import type { Dbb_Config } from './dbb-api';
+
+const dbb_base_fees = { dbb_courier_base_kurus: 4990, dbb_per_km_kurus: 800, dbb_extra_store_kurus: 2500,
+  dbb_service_base_kurus: 2490, dbb_service_rate_bps: 200, dbb_bag_per_store_kurus: 750 };
+type Dbb_Fees = Pick<Dbb_Config, keyof typeof dbb_base_fees>;
 
 export function dbb_distance_km(dbb_a: Dbb_Coordinates, dbb_b: Dbb_Coordinates): number {
   const dbb_radians = (dbb_degrees: number) => dbb_degrees * Math.PI / 180;
@@ -37,19 +42,19 @@ export function dbb_route(dbb_stores: Dbb_Store[], dbb_destination: Dbb_Coordina
   return dbb_best;
 }
 
-export function dbb_build_quote(dbb_assignments: Dbb_Assignment[], dbb_destination: Dbb_Coordinates, dbb_exact = true): Dbb_Quote {
+export function dbb_build_quote(dbb_assignments: Dbb_Assignment[], dbb_destination: Dbb_Coordinates, dbb_exact = true, dbb_fees: Dbb_Fees = dbb_base_fees): Dbb_Quote {
   const dbb_stores = [...new Map(dbb_assignments.map(dbb_item => [dbb_item.dbb_offer.dbb_store_id, dbb_item.dbb_offer.dbb_store])).values()];
   const { dbb_route: dbb_stops, dbb_distance_km: dbb_distance } = dbb_route(dbb_stores, dbb_destination);
   const dbb_subtotal = dbb_assignments.reduce((dbb_sum, dbb_item) => dbb_sum + dbb_item.dbb_offer.dbb_price_kurus * dbb_item.dbb_quantity, 0);
-  const dbb_courier_fee = 4990 + Math.ceil(dbb_distance * 800) + Math.max(dbb_stops.length - 1, 0) * 2500;
-  const dbb_service_fee = 2490 + Math.round(dbb_subtotal * 0.02);
-  const dbb_bag_fee = dbb_stops.length * 750;
+  const dbb_courier_fee = dbb_fees.dbb_courier_base_kurus + Math.ceil(dbb_distance * dbb_fees.dbb_per_km_kurus) + Math.max(dbb_stops.length - 1, 0) * dbb_fees.dbb_extra_store_kurus;
+  const dbb_service_fee = dbb_fees.dbb_service_base_kurus + Math.round(dbb_subtotal * dbb_fees.dbb_service_rate_bps / 10000);
+  const dbb_bag_fee = dbb_stops.length * dbb_fees.dbb_bag_per_store_kurus;
   return { dbb_assignments, dbb_route: dbb_stops, dbb_subtotal, dbb_courier_fee, dbb_service_fee, dbb_bag_fee,
     dbb_total: dbb_subtotal + dbb_courier_fee + dbb_service_fee + dbb_bag_fee,
     dbb_distance_km: dbb_distance, dbb_minutes: Math.round(18 + dbb_stops.length * 9 + dbb_distance * 3), dbb_exact };
 }
 
-export function dbb_optimize(dbb_basket: Dbb_BasketItem[], dbb_offers: Dbb_Offer[], dbb_destination: Dbb_Coordinates) {
+export function dbb_optimize(dbb_basket: Dbb_BasketItem[], dbb_offers: Dbb_Offer[], dbb_destination: Dbb_Coordinates, dbb_fees: Dbb_Fees = dbb_base_fees) {
   const dbb_options = dbb_basket.filter(dbb_item => dbb_item.dbb_quantity > 0).map(dbb_item => ({ dbb_item,
     dbb_offers: dbb_offers.filter(dbb_offer => dbb_offer.dbb_product_id === dbb_item.dbb_product_id && dbb_offer.dbb_in_stock)
   }));
@@ -62,7 +67,7 @@ export function dbb_optimize(dbb_basket: Dbb_BasketItem[], dbb_offers: Dbb_Offer
   if (dbb_exact) {
     const dbb_search = (dbb_index: number, dbb_assignments: Dbb_Assignment[]) => {
       if (dbb_index === dbb_options.length) {
-        const dbb_quote = dbb_build_quote(dbb_assignments, dbb_destination);
+        const dbb_quote = dbb_build_quote(dbb_assignments, dbb_destination, true, dbb_fees);
         if (!dbb_best || dbb_quote.dbb_total < dbb_best.dbb_total) dbb_best = dbb_quote;
         return;
       }
@@ -76,9 +81,9 @@ export function dbb_optimize(dbb_basket: Dbb_BasketItem[], dbb_offers: Dbb_Offer
     for (const { dbb_item, dbb_offers: dbb_choices } of dbb_options) {
       dbb_beam = dbb_beam.flatMap(dbb_partial => dbb_choices.map(dbb_offer => [...dbb_partial,
         { dbb_product_id: dbb_item.dbb_product_id, dbb_quantity: dbb_item.dbb_quantity, dbb_offer }]))
-        .sort((dbb_a, dbb_b) => dbb_build_quote(dbb_a, dbb_destination).dbb_total - dbb_build_quote(dbb_b, dbb_destination).dbb_total).slice(0, 180);
+        .sort((dbb_a, dbb_b) => dbb_build_quote(dbb_a, dbb_destination, true, dbb_fees).dbb_total - dbb_build_quote(dbb_b, dbb_destination, true, dbb_fees).dbb_total).slice(0, 180);
     }
-    dbb_best = dbb_build_quote(dbb_beam[0], dbb_destination, false);
+    dbb_best = dbb_build_quote(dbb_beam[0], dbb_destination, false, dbb_fees);
   }
   const dbb_store_ids = [...new Set(dbb_offers.map(dbb_offer => dbb_offer.dbb_store_id))];
   let dbb_single: Dbb_Quote | null = null;
@@ -89,7 +94,7 @@ export function dbb_optimize(dbb_basket: Dbb_BasketItem[], dbb_offers: Dbb_Offer
       if (dbb_offer) dbb_assignments.push({ dbb_product_id: dbb_item.dbb_product_id, dbb_quantity: dbb_item.dbb_quantity, dbb_offer });
     }
     if (dbb_assignments.length !== dbb_options.length) continue;
-    const dbb_quote = dbb_build_quote(dbb_assignments, dbb_destination);
+    const dbb_quote = dbb_build_quote(dbb_assignments, dbb_destination, true, dbb_fees);
     if (!dbb_single || dbb_quote.dbb_total < dbb_single.dbb_total) dbb_single = dbb_quote;
   }
   return { dbb_best, dbb_single, dbb_cheapest_items };

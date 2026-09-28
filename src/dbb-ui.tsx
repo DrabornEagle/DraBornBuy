@@ -3,8 +3,8 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-export const dbb_theme = { bg: '#080B19', panel: '#11162A', line: '#29304A', text: '#F8FAFF', muted: '#9BA4C3',
-  purple: '#8865FF', mint: '#58F2CB', yellow: '#FFCC71', pink: '#FF749A', blue: '#6DCBFF' };
+export const dbb_theme = { bg: '#101632', panel: '#1B2446', line: '#40507A', text: '#FFFFFF', muted: '#BCC8E8',
+  purple: '#956BFF', mint: '#58F2CB', yellow: '#FFD273', pink: '#FF7CA8', blue: '#6DCBFF' };
 
 export function Dbb_Pill({ dbb_label, dbb_tone = 'purple' }: { dbb_label: string; dbb_tone?: 'purple' | 'mint' | 'pink' | 'yellow' }) {
   const dbb_color = { purple: dbb_theme.purple, mint: dbb_theme.mint, pink: dbb_theme.pink, yellow: dbb_theme.yellow }[dbb_tone];
@@ -46,15 +46,18 @@ export function Dbb_Hero({ dbb_onSearch }: { dbb_onSearch: () => void }) {
       Animated.timing(dbb_pulse, { toValue: 0, duration: 1800, useNativeDriver: true })]));
     dbb_loop.start(); return () => dbb_loop.stop();
   }, [dbb_pulse]);
-  return <LinearGradient colors={['#283887','#483298','#8C48AB']} start={{x:0,y:0}} end={{x:1,y:1}} style={dbb_styles.hero}>
-    <View style={{ position: 'absolute', right: -78, top: -50, width: 220, height: 220, borderRadius: 110, backgroundColor: '#D095FF25' }} />
-    <View style={{ position: 'absolute', right: 55, bottom: -75, width: 160, height: 160, borderRadius: 80, backgroundColor: '#77ECFF20' }} />
+  return <LinearGradient colors={['#2466A6','#6247C8','#A954BD','#E36C99']} start={{x:0,y:0}} end={{x:1,y:1}} style={dbb_styles.hero}>
+    <View style={{ position: 'absolute', right: -78, top: -50, width: 220, height: 220, borderRadius: 110, backgroundColor: '#FFFFFF28' }} />
+    <View style={{ position: 'absolute', right: 55, bottom: -75, width: 160, height: 160, borderRadius: 80, backgroundColor: '#77ECFF38' }} />
+    <Animated.View style={{position:'absolute',right:18,top:83,transform:[{translateY:dbb_pulse.interpolate({inputRange:[0,1],outputRange:[0,-8]})}]}}>
+      <View style={{width:83,height:83,borderRadius:28,backgroundColor:'#FFFFFF2B',borderWidth:1,borderColor:'#FFFFFF70',alignItems:'center',justifyContent:'center',transform:[{rotate:'12deg'}]}}>
+        <Ionicons name="bag-handle" size={38} color="#FFFFFF" /></View></Animated.View>
     <Dbb_Pill dbb_label="ANKARA'DA AKILLI ALIŞVERİŞ" dbb_tone="mint" />
-    <Text style={{ color: 'white', fontSize: 34, lineHeight: 39, fontWeight: '900', letterSpacing: -.9, maxWidth: 290 }}>Ne almak{ '\n' }istiyorsun?</Text>
-    <Text style={{ color: '#E5E1FF', fontSize: 14, lineHeight: 21, maxWidth: 270 }}>Sen söyle. Biz mağazaları ve kurye rotasını birlikte hesaplayalım.</Text>
+    <Text style={{ color: 'white', fontSize: 35, lineHeight: 40, fontWeight: '900', letterSpacing: -.9, maxWidth: 265 }}>Ne almak{ '\n' }istiyorsun?</Text>
+    <Text style={{ color: '#F4EEFF', fontSize: 14, lineHeight: 21, maxWidth: 270 }}>Sen arama. Ürünleri, mağazaları ve kurye rotasını birlikte hesaplayalım.</Text>
     <Pressable onPress={dbb_onSearch} style={dbb_styles.heroSearch} accessibilityRole="button">
       <Ionicons name="search" size={21} color={dbb_theme.purple} />
-      <Text style={{ color: '#6A7194', flex: 1, fontWeight: '600' }}>Coca-Cola 2,5 L ara...</Text>
+      <Text style={{ color: '#6A7194', flex: 1, fontWeight: '600' }}>Ürün, marka veya barkod ara...</Text>
       <Animated.View style={{ transform: [{ scale: dbb_pulse.interpolate({inputRange:[0,1],outputRange:[.9,1.1]}) }] }}>
         <Ionicons name="arrow-forward-circle" size={28} color={dbb_theme.purple} /></Animated.View>
     </Pressable>
@@ -62,14 +65,14 @@ export function Dbb_Hero({ dbb_onSearch }: { dbb_onSearch: () => void }) {
 }
 
 export const dbb_styles = StyleSheet.create({
-  card: { backgroundColor: dbb_theme.panel, borderRadius: 22, borderWidth: 1, borderColor: dbb_theme.line, padding: 18, gap: 12 },
+  card: { backgroundColor: dbb_theme.panel, borderRadius: 24, borderWidth: 1, borderColor: dbb_theme.line, padding: 18, gap: 12 },
   sectionTitle: { color: dbb_theme.text, fontSize: 23, fontWeight: '900', letterSpacing: -.5 },
   caption: { color: dbb_theme.muted, fontSize: 12, lineHeight: 18 },
   button: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 15, borderRadius: 16 },
   buttonText: { color: '#0D1327', fontWeight: '900', fontSize: 14 },
   ghostButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: dbb_theme.line, backgroundColor: '#1A2037' },
   ghostText: { color: dbb_theme.text, fontWeight: '700', fontSize: 13 },
-  hero: { borderRadius: 28, padding: 24, gap: 19, overflow: 'hidden', minHeight: 316, justifyContent: 'space-between', borderWidth: 1, borderColor: '#A39EFF55' },
+  hero: { borderRadius: 30, padding: 24, gap: 19, overflow: 'hidden', minHeight: 320, justifyContent: 'space-between', borderWidth: 1, borderColor: '#F8C5FF88' },
   heroSearch: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8F8FF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14, minHeight: 57 },
   input: { backgroundColor: '#171D33', color: dbb_theme.text, borderWidth: 1, borderColor: dbb_theme.line, borderRadius: 14, paddingHorizontal: 15, paddingVertical: 13, fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },

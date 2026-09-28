@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import { strict as dbb_assert } from 'node:assert';
 import { dbb_build_quote, dbb_distance_km, dbb_optimize } from '../src/dbb-optimizer';
-import { dbb_center, dbb_demo_offers } from '../src/dbb-demo';
-import { dbb_demo_products } from '../src/dbb-demo';
+import { dbb_center, dbb_demo_offers } from './dbb-fixtures';
+import { dbb_demo_products } from './dbb-fixtures';
 import { dbb_breakfast_under_budget, dbb_search_text } from '../src/dbb-planner';
 
 test('Ankara basket quote includes every fee and each product once', () => {
@@ -36,4 +36,15 @@ test('budget breakfast list stays below total including delivery', () => {
 
 test('store product link can be normalized into searchable words', () => {
   dbb_assert.match(dbb_search_text('https://example.com/urun/coca-cola-2-5-l?x=1'),/coca cola/);
+});
+
+test('admin fee changes affect optimization and the quoted total', () => {
+  const dbb_basket = [{dbb_product_id:'kola',dbb_quantity:1}];
+  const dbb_fees = {dbb_courier_base_kurus:4990,dbb_per_km_kurus:800,dbb_extra_store_kurus:2500,
+    dbb_service_base_kurus:2490,dbb_service_rate_bps:200,dbb_bag_per_store_kurus:750};
+  const dbb_normal = dbb_optimize(dbb_basket,dbb_demo_offers,dbb_center,dbb_fees).dbb_best!;
+  const dbb_config = {...dbb_fees,dbb_courier_base_kurus:7490,dbb_service_rate_bps:500};
+  const dbb_updated = dbb_optimize(dbb_basket,dbb_demo_offers,dbb_center,dbb_config).dbb_best!;
+  dbb_assert.equal(dbb_updated.dbb_courier_fee-dbb_normal.dbb_courier_fee,2500);
+  dbb_assert.equal(dbb_updated.dbb_service_fee-dbb_normal.dbb_service_fee,Math.round(dbb_updated.dbb_subtotal*.05)-Math.round(dbb_normal.dbb_subtotal*.02));
 });

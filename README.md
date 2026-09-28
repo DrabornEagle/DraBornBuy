@@ -1,8 +1,10 @@
-# DraBornBuy · Ankara pilotu v0.1
+# DraBornBuy · Ankara pilotu
 
-Expo SDK 58 Android/Expo Go ve web için ortak React Native uygulaması. Sepet, doğrulanmış mağaza teklifleriyle ürün fiyatı + mağaza sayısı + yaklaşık rota + kurye + hizmet + poşet ücretini birlikte değerlendirir. Ankara dışı sipariş sunucuda engellenir.
+Expo Go SDK 58 Android ve web uygulaması. Kullanıcı ürünleri arar; doğrulanmış Ankara şube teklifleri mevcut olduğunda sepet, mağaza kombinasyonu, yaklaşık rota, kurye, hizmet ve poşet ücretlerini birlikte karşılaştırır. Sunucu sipariş tutarını aynı ücret ayarlarıyla yeniden hesaplar.
 
 ## Termux / Expo Go 58.0.0
+
+Yeni kurulum:
 
 ```bash
 pkg update -y
@@ -17,60 +19,47 @@ npx expo login
 npx expo start --lan --clear
 ```
 
-Telefon ve Expo Go aynı Wi-Fi ağında, Expo CLI ile Expo Go aynı Expo hesabında olmalı. Expo Go 58.0.0 ile Termux'ta görünen QR kodu okutun veya gösterilen `exp://` adresini Expo Go ana sayfasına girin. Termux'ta Node 22.13+ gerekir. Bu sürümde APK üretilmez. Web denemesi için `npm run web`; üretim web dosyaları için `npm run export:web`.
+Önceden klonladıysan:
 
-`.env` dosyasındaki iki yer tutucuyu sana verilen Supabase **publishable** anahtarı ve Mapbox **public** token'ı ile değiştir. `.env` GitHub'a yüklenmez; GitHub gizli bilgi taraması token'ı repoya yazmayı engeller. `service_role` veya Supabase secret key mobil uygulamaya asla eklenmez.
-
-`expo@58.0.0-preview.7`, Expo SDK 58'in 28 Eylül 2026 tarihinde npm'de yayımlanmış önizleme sürümüdür. Expo Go ekranında desteklenen SDK'nın **58** olduğundan emin olun. `--legacy-peer-deps`, önizleme React Native `0.88.0-rc.1` sürümünün bazı paketlerin kararlı sürüm peer aralığına girmemesi içindir. Kilit dosyası sabit bağımlılıkları korur.
-
-## Neler çalışıyor?
-
-- Ankara örnek kataloğuyla Türkçe arama, ürün linkindeki adı eşleştirme, barkod kamerası, kategori filtreleri ve sepet; örnek veri tüm ekranlarda açıkça işaretlidir.
-- Teslimat dahil bütçeye sığan kahvaltılık örnek listesi ve hesabınla Android/web arasında eşzamanlı kayıtlı sepetler.
-- Tek mağaza ve toplam maliyeti en düşük mağaza kombinasyonu. 50.000'e kadar kombinasyon tam taranır; daha büyük sepetlerde 180 adaylı yaklaşık arama açıkça etiketlenir. En fazla 4 mağazalık gerçek sipariş sunucuda kabul edilir.
-- Mapbox v6 Ankara adres araması ve statik harita, yol süresi tahmini. Fiyat hesabı kuş uçuşu uzaklığa göre sunucuda yeniden yapılır. Motorlu araç yol süresi bilgilendirme içindir.
-- Supabase e-posta hesabı, aynı veriyi Android ve web'de kullanma, sunucu tarafından fiyatı tekrar hesaplanan sipariş, IBAN/dekont yükleme, gerçek banka işlem referansını isteyen manuel yönetici onayı.
-- Kurye başvurusu/onayı, müşteri adresini gizleyen ödeme onaylı iş havuzu, tek kurye tarafından atomik kabul, mağaza/ürün işaretleme, mağaza fişini fotoğrafla yükleme, fiyat toleransı, uygulama açıkken konum paylaşımı, mesajlaşma ve olay akışı.
-- Teslimden sonra fişler ve kaydedilen gerçek fiyatları inceleyen yönetici mutabakatı; iade/ek ödeme için manuel banka işlem referansı. Müşteri fişleri ve fiyat farkını hesabından görür.
-- Ayrı `dbb_` tabloları ve RLS; özel `dbb_receipts` ve `dbb_shop_receipts` bucket'ları. Diğer ortak Supabase tablolarına müdahale edilmez.
-
-## Canlı sipariş açma koşulları
-
-**Varsayılan `dbb_enabled=false` ve hiç mağaza/teklif yoktur.** Demo fiyatları yalnızca işleyişi denemek içindir. Gerçek piyasa fiyatı, stok veya mağaza anlaşması iddiası taşımaz. Para transferi istemek için önce Ankara mağazalarını, gerçek ürün eşleştirmelerini, güncel doğrulanmış fiyatları, stok kontrol sürecini, kurye operasyonunu ve işletme IBAN'ını kurun. Supabase Dashboard SQL Editor'da `dbb_*` tablolarını yönetin; hiçbir zaman uydurma veriyi `dbb_verified=true` yapmayın.
-
-Yönetici hesabı oluşturduktan sonra **yalnızca ilgili hesabın e-posta adresiyle** `auth.users` içinden kendi UUID'sini bulun. SQL Editor'da kendi hesabını yetkilendirme örneği:
-
-```sql
-insert into public.dbb_admins(dbb_user_id)
-select id from auth.users where email = 'SIZIN_EPOSTANIZ'
-on conflict do nothing;
+```bash
+cd ~/DraBornBuy
+git pull origin main
+npm ci --legacy-peer-deps
+npx expo start --lan --clear
 ```
 
-Fiyatları gerçekten doğruladıktan ve ödeme hesabını belirledikten sonra:
+`.env` içine Supabase **publishable** anahtarını ve Mapbox **public** token'ını yerleştir. Bunlar istemci tarafında açık değerlerdir; Supabase `service_role`/secret anahtarı asla eklenmez. `.env` GitHub'a yüklenmez. Expo Go 58.0.0 ekranında SDK 58 desteklendiğinden emin ol. Termux ve Expo Go aynı telefon/ağ üzerinde çalışırken Metro'nun gösterdiği `exp://` bağlantısını Expo Go ana sayfasına gir. APK üretilmez. Önizleme sürümü ve kilit dosyası birlikte kullanılmalıdır.
 
-```sql
-update public.dbb_config
-set dbb_bank_name = 'BANKA ADI', dbb_account_holder = 'HESAP SAHİBİ',
-    dbb_iban = 'TR...', dbb_enabled = true
-where dbb_key = 'ankara';
-```
+Termux'ta `React Native DevTools ... arm64` kurulumu uyarısı görülebilir. **`Android Bundled` satırı geliyorsa Metro derlemesi tamamlanmıştır**; DevTools kurulum uyarısı tek başına Expo Go açılmasını engellemez. Eski `node_modules` yerine yukarıdaki `npm ci --legacy-peer-deps` komutuyla kilit dosyasındaki sürümleri kur.
 
-Bu komutları örnek yer tutucularla çalıştırmayın. Fiyat kaynağı şu anda manuel/partner verisi içindir; marketlerin canlı fiyat API'leri, kampanyaları ve stok entegrasyonları kurulmadı. `dbb_offers` RLS yalnızca doğrulanmış, stokta ve son 24 saat içinde kontrol edilmiş aktif ürünleri gösterir. Yönetici panelinde dekont onayı, **banka hareketi ve benzersiz işlem referansı manuel kontrol edilmeden verilmemelidir**. Dekont üzerindeki yazı bir ödeme doğrulaması değildir.
+## Veri durumu
 
-## Mimari ve devam planı
+- `dbb_products` tablosunda sekiz gerçek ürün adı, boyutu, kaynak URL'si ve CarrefourSA'nın ürün fotoğrafı CDN bağlantısı var. İlgili ürün sayfaları `dbb_source_url` alanında tutulur. Ürün fotoğrafları ağ üzerinden yüklenir; perakendeci URL'yi değiştirirse yönetici ekranından güncellenir.
+- **Şu anda `dbb_offers` ve `dbb_stores` boştur; `dbb_enabled=false`, IBAN boştur.** Uygulamada örnek market fiyatı, sahte stok ve kurye görevi gösterilmez. Ürün kartındaki “Ankara şube fiyatı bekleniyor” ifadesi bu durumu açıklar.
+- Genel web ürün fiyatı belirli Ankara şubesinin kasadaki fiyatı veya stoğu sayılmaz. Teklif ancak yönetici şube konumunu, nihai fiyatı, stok kontrolünü ve kaynak/kontrol notunu kaydedince görünür. Teklifler ayarlanan geçerlilik süresi dolunca müşteri listesinden çıkar; sipariş sunucuda tekrar doğrulanır.
+- TÜBİTAK Market Fiyatı karşılaştırması halka açıktır; bu proje için izinli, belgelenmiş, şube/stok eşlemeli bir otomatik veri akışı henüz sağlanmadı. Gerçek zamanlı tüm mağaza fiyatlarını veya kampanyalarını kapsadığımız iddia edilmez.
 
-- `src/dbb-optimizer.ts`: saf hesaplama fonksiyonları; kuruş cinsinden tam sayılar.
-- `src/dbb-api.ts`: Supabase ve Mapbox istemcileri. `EXPO_PUBLIC_*` değerleri herkese açıktır; gizli servis anahtarı burada bulunmaz.
-- `supabase/migrations/`: yalnızca `dbb_` uygulama nesneleri. İlk göçler bağlı Supabase projesine uygulanmıştır. Aynı projede tekrar çalıştırmayın.
-- Android ve web aynı Auth ve Supabase veritabanını kullanır. Aktif sepet cihazda saklanır; kayıtlı listeler, gerçek siparişler ve mesajlar sunucuda eşzamanlıdır.
-- Sonraki işler: güvenilir fiyat sağlayıcıları ve stok anlaşmaları; barkod ürün kataloğu genişletme; fotoğraf/sesle ürün tanıma; AI alışveriş önerileri; müşterinin onaylayacağı alternatif ürün; fiş OCR ve otomatik satır eşleştirme; kampanyalar/fiyat geçmişi/bildirimler; gerçek kurye uygunluğu/konumuyla rota maliyeti; çok mağazalı sipariş yükleme performansı.
+## Yönetici
+
+Supabase projesindeki doğrulanmış `draborneagle@gmail.com` hesabının UUID'si `dbb_admins` tablosuna eklendi. Bu hesapla uygulamada **Hesap → DraBornBuy yönetimi** ekranını aç. Diğer hesaplara düzenleme yetkisi verilmez.
+
+Panelden banka adı, işletme hesap sahibi, geçerli TR IBAN, sipariş açma anahtarı, kurye/hizmet/poşet ücretleri, teklif geçerlilik süresi, mağazalar ve Ankara koordinatları, ürünler ve görsel/kaynak bağlantıları, her şube için nihai fiyat, stok ve kontrol notu eklenip değiştirilebilir. IBAN biçimi ve kontrol basamağı sunucuda da doğrulanır. Gerçek banka hesabını proje sahibi girmelidir; buraya herhangi bir IBAN uydurulmadı.
+
+Yönetici operasyon panelinde dekont, banka işlem referansı, kurye başvurusu ve fiş mutabakatını yönetir. Dekont resmi tek başına ödeme kanıtı sayılmaz; banka hareketi manuel kontrol edilmelidir. Başka uygulamaların tabloları değiştirilmedi; yeni veri yapıları `dbb_` önekli, RLS korumalıdır.
+
+## Mevcut akış ve sınırlar
+
+Arama, barkod tarama, ürün bağlantısı araması, çok mağazalı optimizasyon, bütçeye göre kahvaltılık seçimi (yalnızca doğrulanmış teklif varsa), kayıtlı listeler, Mapbox adres ve rota tahmini, e-posta hesabı, sipariş, IBAN/dekont, manuel ödeme onayı, kurye görev ve fiş akışı, mesajlaşma, canlı olaylar/konum ve son mutabakat kodu vardır. Fiyat farkı toleransı desteklenir.
+
+Fotoğraftan/sesten ürün tanıma, AI alışveriş sohbeti, otomatik banka doğrulaması, fiş OCR, otomatik alternatif ürün onayı, canlı kampanya/stok sağlayıcıları, fiyat geçmişi ve bildirim otomasyonu henüz gerçek servislerle bağlı değildir. Böyle özellikler için ayrı veri anlaşmaları ve servis kimlik bilgileri gereklidir. Mevcut uygulama bu özellikleri varmış gibi göstermemelidir.
 
 ## Doğrulama
 
 ```bash
 npm run check
+EXPO_OFFLINE=1 npx expo install --check
+EXPO_OFFLINE=1 npx expo export --platform android
 npm run export:web
-npx expo install --check
 ```
 
-Gerçek transferi, iki ayrı telefonun canlı konum paylaşımını ve mağaza içi stok akışını test etmek için pilot verisi ve gerçek işletme hesapları gerekir. Demo sipariş hiçbir banka veya kurye görevi oluşturmaz.
+Veritabanı değişiklikleri `supabase/migrations/` içindedir ve paylaşılan `DraBorn-Park-Garage-SportOdds` projesine uygulanmıştır. İki yeni migration yalnızca DraBornBuy nesnelerine dokunur. Veritabanı, kod ve operasyonun birbirinden ayrı üç adım olduğunu unutma: gerçek siparişi açmadan önce Ankara şubesi fiyat/stok doğrulaması, kurye operasyonu ve işletme IBAN'ı gerekir.

@@ -7,7 +7,7 @@ import { decode } from 'base64-arraybuffer';
 import type { LocationSubscription } from 'expo-location';
 import type { Dbb_Message, Dbb_Order, Dbb_OrderItem, Dbb_Store } from './dbb-model';
 import { dbb_client, dbb_get_courier_orders, dbb_get_open_jobs, dbb_get_orders, dbb_static_map, type Dbb_Config, type Dbb_Job } from './dbb-api';
-import { dbb_demo_stores } from './dbb-demo';
+import { Dbb_CatalogAdmin } from './dbb-catalog-admin';
 import { dbb_lira } from './dbb-optimizer';
 import { Dbb_Button, Dbb_Card, Dbb_Pill, Dbb_Section, dbb_styles, dbb_theme } from './dbb-ui';
 
@@ -162,8 +162,8 @@ export function Dbb_Orders({ dbb_user_id, dbb_new_order_id, dbb_config, dbb_noti
   </View>;
 }
 
-export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account }: {
-  dbb_user_id: string | null; dbb_demo: boolean; dbb_notice: Dbb_Notify; dbb_go_account: () => void;
+export function Dbb_Courier({ dbb_user_id, dbb_notice, dbb_go_account }: {
+  dbb_user_id: string | null; dbb_notice: Dbb_Notify; dbb_go_account: () => void;
 }) {
   const [dbb_profile, dbb_set_profile] = useState<{dbb_user_id:string;dbb_approved:boolean;dbb_name:string}|null>(null);
   const [dbb_name, dbb_set_name] = useState(''); const [dbb_phone, dbb_set_phone] = useState('');
@@ -175,8 +175,6 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
   const [dbb_receipts, dbb_set_receipts] = useState<{dbb_id:string;dbb_store_id:string}[]>([]);
   const [dbb_price, dbb_set_price] = useState<Record<string,string>>({});
   const [dbb_location_watch, dbb_set_location_watch] = useState<LocationSubscription|null>(null);
-  const [dbb_demo_stage, dbb_set_demo_stage] = useState(0);
-  const [dbb_demo_checked, dbb_set_demo_checked] = useState<string[]>([]);
   const [dbb_message, dbb_set_message] = useState('');
   const [dbb_chats, dbb_set_chats] = useState<Dbb_Message[]>([]);
 
@@ -283,24 +281,8 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
     if (dbb_error) dbb_notice(dbb_error.message); else { dbb_set_message(''); dbb_load_active(); }
   };
 
-  const dbb_demo_screen = <Dbb_Card dbb_style={{ borderColor:dbb_theme.yellow + '66' }}>
-    <Dbb_Pill dbb_label="KURYE SİMÜLASYONU · ÖDEME YOK" dbb_tone="yellow" />
-    <Text style={{color:'white',fontSize:22,fontWeight:'900'}}>Yeni sipariş · DRB-DEMO</Text>
-    <Text style={dbb_styles.muted}>2 mağaza · 5 ürün · Kızılay · Tahmini 42 dk · Örnek kurye kazancı 118 ₺</Text>
-    <Text style={{color:dbb_theme.mint,fontWeight:'800'}}>{['Siparişi kabul et','Mağazaya gidiliyor','Alışveriş yapılıyor','Teslimata çıkıldı','Teslim edildi'][dbb_demo_stage]}</Text>
-    {dbb_demo_stage >= 1 && dbb_demo_stage <= 2 && dbb_demo_stores.slice(0,2).map((dbb_store,dbb_index) => <View key={dbb_store.dbb_id} style={{gap:6}}>
-      <Text style={dbb_styles.itemTitle}>Durak {dbb_index + 1} · {dbb_store.dbb_name}</Text>
-      {['Coca-Cola 2,5 L','Nutella 750 g',dbb_index ? 'Ariel 8 kg' : 'Tavuk göğsü 2 kg'].map(dbb_name => <Pressable key={dbb_name} onPress={() => dbb_set_demo_checked(dbb_old => dbb_old.includes(dbb_name) ? dbb_old.filter(dbb_value => dbb_value !== dbb_name) : [...dbb_old,dbb_name])}>
-        <Text style={{color:dbb_demo_checked.includes(dbb_name) ? dbb_theme.mint : dbb_theme.muted}}>{dbb_demo_checked.includes(dbb_name) ? '☑' : '□'} {dbb_name}</Text></Pressable>)}
-    </View>)}
-    <Dbb_Button dbb_title={dbb_demo_stage === 0 ? 'Örnek siparişi kabul et' : dbb_demo_stage === 4 ? 'Tekrar dene' : 'Sonraki aşama'}
-      dbb_kind="mint" dbb_onPress={() => dbb_set_demo_stage(dbb_stage => (dbb_stage + 1) % 5)} />
-    <Text style={dbb_styles.muted}>Bu ekran gerçek sipariş/kurye görevi oluşturmaz; Expo Go içinde akışı denemek içindir.</Text>
-  </Dbb_Card>;
-
   const dbb_stop = dbb_active ? dbb_stores.find(dbb_store => dbb_store.dbb_id === dbb_active.dbb_route_store_ids[dbb_active.dbb_stop_index]) : undefined;
   return <View style={{gap:18}}><Text style={dbb_styles.heading}>Kurye merkezi</Text>
-    {dbb_demo && dbb_demo_screen}
     {!dbb_user_id ? <Dbb_Card><Text style={dbb_styles.itemTitle}>Gerçek görev için giriş yap</Text><Dbb_Button dbb_title="Hesabıma git" dbb_onPress={dbb_go_account} /></Dbb_Card> :
       !dbb_profile ? <Dbb_Card><Text style={dbb_styles.itemTitle}>Kurye başvurusu</Text><Text style={dbb_styles.muted}>Görevler ancak yönetici hesabını onayladıktan sonra açılır.</Text>
         <TextInput style={dbb_styles.input} value={dbb_name} onChangeText={dbb_set_name} placeholder="Ad Soyad" placeholderTextColor="#7580A0" />
@@ -357,7 +339,7 @@ export function Dbb_Courier({ dbb_user_id, dbb_demo, dbb_notice, dbb_go_account 
   </View>;
 }
 
-export function Dbb_Admin({ dbb_user_id, dbb_notice }: { dbb_user_id: string; dbb_notice: Dbb_Notify }) {
+export function Dbb_Admin({ dbb_user_id, dbb_notice, dbb_on_catalog_change }: { dbb_user_id: string; dbb_notice: Dbb_Notify; dbb_on_catalog_change: () => void }) {
   const [dbb_admin, dbb_set_admin] = useState(false);
   const [dbb_claims, dbb_set_claims] = useState<{dbb_id:string;dbb_order_id:string;dbb_object_path:string;dbb_created_at:string;dbb_orders:{dbb_code:string;dbb_total_kurus:number}}[]>([]);
   const [dbb_couriers, dbb_set_couriers] = useState<{dbb_user_id:string;dbb_name:string;dbb_phone:string}[]>([]);
@@ -423,7 +405,8 @@ export function Dbb_Admin({ dbb_user_id, dbb_notice }: { dbb_user_id: string; db
     if (dbb_error) dbb_notice(dbb_error.message); else {dbb_notice('Sipariş mutabakatı tamamlandı.');dbb_refresh();}
   };
   if (!dbb_admin) return null;
-  return <Dbb_Section dbb_title="Operasyon paneli" dbb_caption="Ödeme kararı yalnızca gerçek banka hareketi kontrolünden sonra verilir.">
+  return <View style={{gap:24}}><Dbb_CatalogAdmin dbb_user_id={dbb_user_id} dbb_notice={dbb_notice} dbb_on_change={dbb_on_catalog_change} />
+    <Dbb_Section dbb_title="Operasyon paneli" dbb_caption="Ödeme kararı yalnızca gerçek banka hareketi kontrolünden sonra verilir.">
     <Dbb_Card><Dbb_Pill dbb_label="YÖNETİCİ" dbb_tone="pink" /><Text style={dbb_styles.itemTitle}>{dbb_claims.length} dekont · {dbb_couriers.length} kurye başvurusu · {dbb_review_orders.length} mutabakat</Text>
       <Dbb_Button dbb_title="Listeyi yenile" dbb_kind="ghost" dbb_onPress={dbb_refresh} />
       {dbb_claims.map(dbb_claim => <View key={dbb_claim.dbb_id} style={{gap:9,borderTopWidth:1,borderColor:dbb_theme.line,paddingTop:12}}>
@@ -463,5 +446,5 @@ export function Dbb_Admin({ dbb_user_id, dbb_notice }: { dbb_user_id: string; db
         </View>;
       })}
     </Dbb_Card>
-  </Dbb_Section>;
+  </Dbb_Section></View>;
 }

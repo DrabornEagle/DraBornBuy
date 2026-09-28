@@ -1,4 +1,4 @@
-import type { Dbb_BasketItem, Dbb_Offer, Dbb_Product, Dbb_Store } from './dbb-model';
+import type { Dbb_BasketItem, Dbb_Offer, Dbb_Product, Dbb_Store } from '../src/dbb-model';
 
 export const dbb_center = { dbb_lat: 39.92077, dbb_lon: 32.85411 };
 export const dbb_demo_stores: Dbb_Store[] = [
@@ -7,18 +7,18 @@ export const dbb_demo_stores: Dbb_Store[] = [
   { dbb_id: 'carrefour', dbb_name: 'CarrefourSA · Örnek', dbb_address: 'Kızılay / Ankara', dbb_lat: 39.9222, dbb_lon: 32.8612 }
 ];
 export const dbb_demo_products: Dbb_Product[] = [
-  { dbb_id: 'kola', dbb_name: 'Coca-Cola', dbb_brand: 'Coca-Cola', dbb_size: '2,5 L', dbb_category: 'İçecek', dbb_barcode: '5449000054227', dbb_emoji: '🥤' },
-  { dbb_id: 'nutella', dbb_name: 'Nutella', dbb_brand: 'Ferrero', dbb_size: '750 g', dbb_category: 'Kahvaltılık', dbb_emoji: '🍫' },
-  { dbb_id: 'ariel', dbb_name: 'Ariel Toz Deterjan', dbb_brand: 'Ariel', dbb_size: '8 kg', dbb_category: 'Temizlik', dbb_emoji: '🫧' },
-  { dbb_id: 'finish', dbb_name: 'Finish Tablet', dbb_brand: 'Finish', dbb_size: '40’lı', dbb_category: 'Temizlik', dbb_emoji: '🧼' },
-  { dbb_id: 'tavuk', dbb_name: 'Tavuk Göğsü', dbb_brand: 'Kasap', dbb_size: '1 kg', dbb_category: 'Taze gıda', dbb_emoji: '🍗' },
-  { dbb_id: 'pirinc', dbb_name: 'Baldo Pirinç', dbb_brand: 'Örnek', dbb_size: '1 kg', dbb_category: 'Bakliyat', dbb_emoji: '🍚' },
-  { dbb_id: 'sut', dbb_name: 'Tam Yağlı Süt', dbb_brand: 'Örnek', dbb_size: '1 L', dbb_category: 'Kahvaltılık', dbb_emoji: '🥛' },
-  { dbb_id: 'yumurta', dbb_name: 'Yumurta', dbb_brand: 'Örnek', dbb_size: '10’lu', dbb_category: 'Kahvaltılık', dbb_emoji: '🥚' },
-  { dbb_id: 'peynir', dbb_name: 'Beyaz Peynir', dbb_brand: 'Örnek', dbb_size: '500 g', dbb_category: 'Kahvaltılık', dbb_emoji: '🧀' },
-  { dbb_id: 'ekmek', dbb_name: 'Ekmek', dbb_brand: 'Örnek', dbb_size: '1 adet', dbb_category: 'Kahvaltılık', dbb_emoji: '🍞' },
-  { dbb_id: 'zeytin', dbb_name: 'Siyah Zeytin', dbb_brand: 'Örnek', dbb_size: '400 g', dbb_category: 'Kahvaltılık', dbb_emoji: '🫒' },
-  { dbb_id: 'cay', dbb_name: 'Siyah Çay', dbb_brand: 'Örnek', dbb_size: '500 g', dbb_category: 'Kahvaltılık', dbb_emoji: '🫖' }
+  { dbb_id: 'kola', dbb_name: 'Coca-Cola', dbb_brand: 'Coca-Cola', dbb_size: '2,5 L', dbb_category: 'İçecek', dbb_barcode: '5449000054227' },
+  { dbb_id: 'nutella', dbb_name: 'Nutella', dbb_brand: 'Ferrero', dbb_size: '750 g', dbb_category: 'Kahvaltılık' },
+  { dbb_id: 'ariel', dbb_name: 'Ariel Toz Deterjan', dbb_brand: 'Ariel', dbb_size: '8 kg', dbb_category: 'Temizlik' },
+  { dbb_id: 'finish', dbb_name: 'Finish Tablet', dbb_brand: 'Finish', dbb_size: '40’lı', dbb_category: 'Temizlik' },
+  { dbb_id: 'tavuk', dbb_name: 'Tavuk Göğsü', dbb_brand: 'Kasap', dbb_size: '1 kg', dbb_category: 'Taze gıda' },
+  { dbb_id: 'pirinc', dbb_name: 'Baldo Pirinç', dbb_brand: 'Örnek', dbb_size: '1 kg', dbb_category: 'Bakliyat' },
+  { dbb_id: 'sut', dbb_name: 'Tam Yağlı Süt', dbb_brand: 'Örnek', dbb_size: '1 L', dbb_category: 'Kahvaltılık' },
+  { dbb_id: 'yumurta', dbb_name: 'Yumurta', dbb_brand: 'Örnek', dbb_size: '10’lu', dbb_category: 'Kahvaltılık' },
+  { dbb_id: 'peynir', dbb_name: 'Beyaz Peynir', dbb_brand: 'Örnek', dbb_size: '500 g', dbb_category: 'Kahvaltılık' },
+  { dbb_id: 'ekmek', dbb_name: 'Ekmek', dbb_brand: 'Örnek', dbb_size: '1 adet', dbb_category: 'Kahvaltılık' },
+  { dbb_id: 'zeytin', dbb_name: 'Siyah Zeytin', dbb_brand: 'Örnek', dbb_size: '400 g', dbb_category: 'Kahvaltılık' },
+  { dbb_id: 'cay', dbb_name: 'Siyah Çay', dbb_brand: 'Örnek', dbb_size: '500 g', dbb_category: 'Kahvaltılık' }
 ];
 const dbb_demo_prices: Record<string, Record<string, number>> = {
   kola: { a101: 6750, migros: 7295, carrefour: 6990 },
