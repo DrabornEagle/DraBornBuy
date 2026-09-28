@@ -8,7 +8,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": { "supportsTablet": true },
-    "android": { "package": "com.draborneagle.drabornbuy", "edgeToEdgeEnabled": true },
+    "android": { "package": "com.draborneagle.drabornbuy", "versionCode": 1, "edgeToEdgeEnabled": true },
     "web": { "bundler": "metro", "output": "static", "name": "DraBornBuy" },
     "plugins": ["expo-router", ["expo-camera", { "cameraPermission": "Ürün barkodunu taramak için kamera izni gerekiyor." }], ["expo-image-picker", { "photosPermission": "Dekont seçmek için galeri izni gerekiyor." }], ["expo-location", { "locationWhenInUsePermission": "Ankara içindeki teslimat noktanı seçmek için konum izni gerekiyor." }]],
     "experiments": { "typedRoutes": true, "baseUrl": "/DraBornBuy" }
