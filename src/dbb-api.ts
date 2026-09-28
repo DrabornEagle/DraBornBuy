@@ -22,30 +22,37 @@ export const dbb_default_config: Dbb_Config = { dbb_enabled: false, dbb_requeste
   dbb_mapbox_public_token: '', dbb_max_age_hours: 24, dbb_courier_base_kurus: 4990, dbb_per_km_kurus: 800, dbb_extra_store_kurus: 2500,
   dbb_service_base_kurus: 2490, dbb_service_rate_bps: 200, dbb_bag_per_store_kurus: 750 };
 const dbb_product_fields='dbb_id,dbb_name,dbb_brand,dbb_size,dbb_category,dbb_barcode,dbb_image_url,dbb_source_url,dbb_source_merchant,dbb_catalog_price_kurus,dbb_catalog_in_stock,dbb_catalog_checked_at';
+const dbb_live_catalog_cutoff = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+const dbb_catalog_is_live = (dbb_product:Dbb_Product, dbb_max_age_hours=24) => {
+  if (dbb_product.dbb_catalog_in_stock !== true || !dbb_product.dbb_catalog_price_kurus || !dbb_product.dbb_catalog_checked_at) return false;
+  const dbb_age = Date.now() - new Date(dbb_product.dbb_catalog_checked_at).getTime();
+  return dbb_age >= 0 && dbb_age <= dbb_max_age_hours * 60 * 60 * 1000;
+};
 
 export async function dbb_load_catalog(): Promise<{ dbb_offers: Dbb_Offer[]; dbb_products: Dbb_Product[]; dbb_config: Dbb_Config; dbb_total_products: number }> {
   if (!dbb_client) return { dbb_offers: [], dbb_products: [], dbb_config: dbb_default_config, dbb_total_products: 0 };
-  const [dbb_result, dbb_products_result, dbb_featured_result, dbb_settings, dbb_count_result] = await Promise.all([
+  const dbb_cutoff = dbb_live_catalog_cutoff();
+  const [dbb_result, dbb_products_result, dbb_settings, dbb_count_result] = await Promise.all([
     dbb_client.from('dbb_offers').select('dbb_id,dbb_store_id,dbb_product_id,dbb_price_kurus,dbb_in_stock,dbb_verified,dbb_checked_at,dbb_source_url,dbb_availability,dbb_stores!inner(dbb_id,dbb_name,dbb_address,dbb_lat,dbb_lon,dbb_active),dbb_products!inner(dbb_id,dbb_name,dbb_brand,dbb_size,dbb_category,dbb_barcode,dbb_image_url,dbb_source_url,dbb_active)')
       .eq('dbb_verified',true).eq('dbb_in_stock',true).eq('dbb_availability','confirmed')
       .neq('dbb_source','catalog').order('dbb_checked_at',{ascending:false}).limit(400),
     dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true)
-      .order('dbb_catalog_in_stock',{ascending:false,nullsFirst:false})
+      .eq('dbb_catalog_in_stock',true).not('dbb_catalog_price_kurus','is',null).gte('dbb_catalog_checked_at',dbb_cutoff)
       .order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false}).limit(180),
-    dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true).is('dbb_external_key',null).order('dbb_created_at').limit(20),
     dbb_client.from('dbb_config').select('*').eq('dbb_key','ankara').single(),
-    dbb_client.from('dbb_products').select('dbb_id',{count:'exact',head:true}).eq('dbb_active',true),
+    dbb_client.from('dbb_products').select('dbb_id',{count:'exact',head:true}).eq('dbb_active',true)
+      .eq('dbb_catalog_in_stock',true).not('dbb_catalog_price_kurus','is',null).gte('dbb_catalog_checked_at',dbb_cutoff),
   ]);
   if (dbb_result.error) throw dbb_result.error;
   if (dbb_products_result.error) throw dbb_products_result.error;
   if (dbb_settings.error) throw dbb_settings.error;
-  if (dbb_featured_result.error) throw dbb_featured_result.error;
   if (dbb_count_result.error) throw dbb_count_result.error;
   const dbb_runtime_mapbox=String(dbb_settings.data.dbb_mapbox_public_token||'').trim();
   if (dbb_runtime_mapbox.startsWith('pk.')) dbb_mapbox=dbb_runtime_mapbox;
-  const dbb_max_age = Number(dbb_settings.data.dbb_max_age_hours || 24) * 3600000;
+  const dbb_max_age_hours = Number(dbb_settings.data.dbb_max_age_hours || 24);
+  const dbb_max_age = dbb_max_age_hours * 3600000;
   const dbb_offers = ((dbb_result.data || []) as unknown as Record<string, unknown>[]).filter(dbb_row =>
-    dbb_row.dbb_verified === true && dbb_row.dbb_availability !== 'unavailable' &&
+    dbb_row.dbb_verified === true && dbb_row.dbb_availability === 'confirmed' &&
     Date.now() - new Date(String(dbb_row.dbb_checked_at)).getTime() <= dbb_max_age &&
     (dbb_row.dbb_stores as {dbb_active:boolean}).dbb_active && (dbb_row.dbb_products as {dbb_active:boolean}).dbb_active
   ).map(dbb_row => ({
@@ -56,37 +63,51 @@ export async function dbb_load_catalog(): Promise<{ dbb_offers: Dbb_Offer[]; dbb
     dbb_store: dbb_row.dbb_stores as Dbb_Offer['dbb_store'], dbb_product: dbb_row.dbb_products as Dbb_Offer['dbb_product']
   }));
   const dbb_unique=new Map<string,Dbb_Product>();
-  for (const dbb_item of [...(dbb_products_result.data||[]),...(dbb_featured_result.data||[])]) dbb_unique.set(dbb_item.dbb_id,dbb_item as Dbb_Product);
+  for (const dbb_item of (dbb_products_result.data||[]) as Dbb_Product[]) {
+    if (dbb_catalog_is_live(dbb_item,dbb_max_age_hours)) dbb_unique.set(dbb_item.dbb_id,dbb_item);
+  }
+  for (const dbb_offer of dbb_offers) {
+    if (!dbb_unique.has(dbb_offer.dbb_product_id)) {
+      const dbb_offer_product=dbb_offer.dbb_product as unknown as Dbb_Product;
+      dbb_unique.set(dbb_offer.dbb_product_id,{
+        ...dbb_offer_product,
+        dbb_source_merchant: dbb_offer.dbb_store.dbb_name,
+        dbb_catalog_price_kurus: null,
+        dbb_catalog_in_stock: null,
+        dbb_catalog_checked_at: null
+      } as Dbb_Product);
+    }
+  }
   return { dbb_offers, dbb_products: [...dbb_unique.values()], dbb_config: dbb_settings.data as Dbb_Config,
-    dbb_total_products: dbb_count_result.count || 0 };
+    dbb_total_products: Math.max(dbb_count_result.count || 0,dbb_unique.size) };
 }
 
 export async function dbb_search_catalog(dbb_query:string,dbb_category='Tümü',dbb_offset=0):Promise<Dbb_Product[]> {
   if (!dbb_client) return [];
   const dbb_words=dbb_query.trim().replace(/[%_\\]/g,'').split(/\s+/).filter(Boolean);
-  let dbb_request=dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true);
+  let dbb_request=dbb_client.from('dbb_products').select(dbb_product_fields).eq('dbb_active',true)
+    .eq('dbb_catalog_in_stock',true).not('dbb_catalog_price_kurus','is',null).gte('dbb_catalog_checked_at',dbb_live_catalog_cutoff());
   if (dbb_category!=='Tümü') dbb_request=dbb_request.eq('dbb_category',dbb_category);
   if (dbb_words.length) dbb_request=/^\d{8,14}$/.test(dbb_words[0]) ? dbb_request.eq('dbb_barcode',dbb_words[0]) :
     dbb_request.ilike('dbb_name',`%${dbb_words.join('%')}%`);
   const {data:dbb_data,error:dbb_error}=await dbb_request
-    .order('dbb_catalog_in_stock',{ascending:false,nullsFirst:false})
     .order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false})
     .range(dbb_offset,dbb_offset+99);
   if (dbb_error) throw dbb_error;
-  return dbb_data as Dbb_Product[];
+  return (dbb_data || []).filter(dbb_item=>dbb_catalog_is_live(dbb_item as Dbb_Product)) as Dbb_Product[];
 }
 
 export async function dbb_breakfast_catalog():Promise<Dbb_Product[]> {
   if (!dbb_client) return [];
-  // Fetch essentials separately: a single recent page can omit rare items such
-  // as milk or tea even when they exist in the catalog.
   const dbb_terms=['yumurta','peynir','zeytin','ekmek','süt','çay'];
+  const dbb_cutoff=dbb_live_catalog_cutoff();
   const dbb_pages=await Promise.all(dbb_terms.map(dbb_term=>dbb_client!.from('dbb_products')
     .select(dbb_product_fields).eq('dbb_active',true).eq('dbb_category','Kahvaltılık')
-    .ilike('dbb_name',`%${dbb_term}%`).order('dbb_catalog_in_stock',{ascending:false,nullsFirst:false})
-    .order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false}).limit(30)));
+    .eq('dbb_catalog_in_stock',true).not('dbb_catalog_price_kurus','is',null).gte('dbb_catalog_checked_at',dbb_cutoff)
+    .ilike('dbb_name',`%${dbb_term}%`).order('dbb_catalog_checked_at',{ascending:false,nullsFirst:false}).limit(30)));
   for (const dbb_page of dbb_pages) if (dbb_page.error) throw dbb_page.error;
-  return [...new Map(dbb_pages.flatMap(dbb_page=>dbb_page.data||[]).map(dbb_item=>[dbb_item.dbb_id,dbb_item as Dbb_Product])).values()];
+  return [...new Map(dbb_pages.flatMap(dbb_page=>(dbb_page.data||[]).filter(dbb_item=>dbb_catalog_is_live(dbb_item as Dbb_Product)))
+    .map(dbb_item=>[dbb_item.dbb_id,dbb_item as Dbb_Product])).values()];
 }
 
 export async function dbb_products_for_basket(dbb_ids:string[]):Promise<Dbb_Product[]> {
