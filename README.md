@@ -2,6 +2,8 @@
 
 Expo SDK 58 / Expo Go 58.0.0 Android ve web uygulaması. Ürün kataloğu ve çevrimiçi referans fiyatları otomatik yenilenir. Sepet optimizasyonu, yalnızca Ankara'da fiyatı ve stoğu doğrulanmış şube teklifleriyle teslimat dahil hesap yapar.
 
+Android ve [web sürümü](https://www.draborneagle.com/DraBornBuy/) aynı Expo kaynak kodunu ve Supabase projesini kullanır. Oturum açan müşterinin etkin sepeti `dbb_baskets` ile iki cihaz arasında, kayıtlı alışveriş listeleri ise `dbb_saved_lists` ile eşitlenir. Giriş yapılmadan oluşturulan sepet yalnızca cihazda kalır ve girişte mevcut hesap sepetiyle birleştirilir.
+
 ## Termux kurulumu
 
 ```bash
@@ -26,6 +28,8 @@ npx expo start --lan --clear
 ```
 
 `.env` dosyasına Supabase **publishable** anahtarını ve Mapbox **public** token'ını koy. `service_role`/secret anahtarı uygulamaya veya GitHub'a konmaz. `.env` git dışında tutulur. Termux ve Expo Go aynı ağdayken Metro'nun `exp://` adresini Expo Go'da aç. APK oluşturulmaz. Termux'ta React Native DevTools için `arm64` uyarısı görülebilir; `Android Bundled` tamamlanıyorsa bu tek başına Metro derlemesini engellemez.
+
+Web yayınındaki `/DraBornBuy` alt yolunu Expo `experiments.baseUrl` ayarlar. `.env.production` yalnızca tarayıcıda zaten görünen Supabase URL ve publishable anahtarını içerir. Web yayını için Mapbox public token'ı GitHub Actions `DBB_MAPBOX_TOKEN` değişkeni ile ayrıca sağlanır; değişken yoksa harita/adres araması kullanılamaz. Sunucu veya banka sırları burada bulunmaz. `DrabornEagle_Web` deposunun Pages iş akışı ana depodan web çıktısını üretir.
 
 ## Otomatik veri akışı
 

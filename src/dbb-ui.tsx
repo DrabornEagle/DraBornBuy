@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export const dbb_theme = { bg: '#0D1428', panel: '#192443', line: '#34446B', text: '#FFFFFF', muted: '#B4C3DA',
-  purple: '#BB9EFF', mint: '#65E3C4', yellow: '#FFD36A', pink: '#FF8DA7', blue: '#89BCFF' };
+export const dbb_theme = { bg: '#0C1D23', panel: '#173139', line: '#32545B', text: '#FFFFFF', muted: '#B2C9C5',
+  purple: '#BBA1FF', mint: '#79E8B6', yellow: '#FFD270', pink: '#FF91A1', blue: '#9AD9F8' };
 
 export function Dbb_Pill({ dbb_label, dbb_tone = 'purple' }: { dbb_label: string; dbb_tone?: 'purple' | 'mint' | 'pink' | 'yellow' }) {
   const dbb_color = { purple: dbb_theme.purple, mint: dbb_theme.mint, pink: dbb_theme.pink, yellow: dbb_theme.yellow }[dbb_tone];
@@ -24,7 +24,7 @@ export function Dbb_Button({ dbb_title, dbb_onPress, dbb_icon, dbb_kind = 'prima
   return <Pressable onPress={dbb_onPress} disabled={dbb_disabled} accessibilityRole="button" accessibilityLabel={dbb_title}
     style={({ pressed }) => [{ opacity: dbb_disabled ? .48 : pressed ? .76 : 1, borderRadius: 15, overflow: 'hidden' }]}>
     <View style={dbb_kind === 'ghost' ? dbb_styles.ghostButton : [dbb_styles.button, { backgroundColor: dbb_color }]}>
-      {dbb_icon && <Ionicons name={dbb_icon} size={18} color={dbb_kind === 'ghost' ? dbb_theme.text : '#18233D'} />}
+      {dbb_icon && <Ionicons name={dbb_icon} size={18} color={dbb_kind === 'ghost' ? dbb_theme.text : '#14332E'} />}
       <Text style={dbb_kind === 'ghost' ? dbb_styles.ghostText : dbb_styles.buttonText}>{dbb_title}</Text>
     </View>
   </Pressable>;
@@ -36,16 +36,16 @@ export function Dbb_Section({ dbb_title, dbb_caption, children }: { dbb_title: s
 }
 
 export function Dbb_Hero({ dbb_onSearch }: { dbb_onSearch: () => void }) {
-  return <LinearGradient colors={['#5B5BF5','#8958E9','#FB7895']} start={{x:0,y:0}} end={{x:1,y:1}} style={dbb_styles.hero}>
+  return <LinearGradient colors={['#0F775E','#18A87A','#A1CB54']} start={{x:0,y:0}} end={{x:1,y:1}} style={dbb_styles.hero}>
     <View style={{ flexDirection:'row',alignItems:'center',justifyContent:'space-between' }}>
-      <View style={{backgroundColor:'#FFFFFF30',paddingHorizontal:12,paddingVertical:7,borderRadius:20}}><Text style={{color:'white',fontWeight:'900',fontSize:11,letterSpacing:.8}}>ANKARA · AKILLI ALIŞVERİŞ</Text></View>
-      <Ionicons name="bag-handle" color="white" size={27} />
+      <View style={{backgroundColor:'#FFFFFF2D',paddingHorizontal:12,paddingVertical:7,borderRadius:20}}><Text style={{color:'white',fontWeight:'900',fontSize:11,letterSpacing:.8}}>ANKARA · SENİN MARKETİN</Text></View>
+      <View style={{flexDirection:'row',gap:5}}>{(['nutrition','basket','pricetag'] as const).map((dbb_icon,dbb_index)=><View key={dbb_icon} style={{width:33,height:33,borderRadius:17,alignItems:'center',justifyContent:'center',backgroundColor:['#FA6758','#F9CC65','#276FBA'][dbb_index]}}><Ionicons name={dbb_icon} size={17} color="white" /></View>)}</View>
     </View>
-    <View style={{gap:9}}><Text style={{color:'white',fontSize:34,lineHeight:39,fontWeight:'900',letterSpacing:-1}}>Ne almak istiyorsun?</Text>
-      <Text style={{color:'#F1EBFF',fontSize:14,lineHeight:21}}>Ürünü bul, sepetini kur. Fiyatları ve teslimatı birlikte hesaplayalım.</Text></View>
+    <View style={{gap:9}}><Text style={{color:'white',fontSize:36,lineHeight:41,fontWeight:'900',letterSpacing:-1}}>Ne almak istiyorsun?</Text>
+      <Text style={{color:'#E8FFF0',fontSize:14,lineHeight:21}}>Raflar cebinde. Ürünleri bul, sepetini kolayca oluştur.</Text></View>
     <Pressable onPress={dbb_onSearch} style={dbb_styles.heroSearch} accessibilityRole="button" accessibilityLabel="Ürün ara">
-      <Ionicons name="search" size={22} color="#5556CD" /><Text style={{color:'#5B6588',flex:1,fontWeight:'700'}}>Ürün, marka veya barkod ara</Text>
-      <Ionicons name="arrow-forward-circle" size={26} color="#6F58E9" />
+      <Ionicons name="search" size={22} color="#117B60" /><Text style={{color:'#55736A',flex:1,fontWeight:'700'}}>Ürün, marka veya barkod ara</Text>
+      <Ionicons name="arrow-forward-circle" size={26} color="#EE7651" />
     </Pressable>
   </LinearGradient>;
 }
@@ -55,12 +55,12 @@ export const dbb_styles = StyleSheet.create({
   sectionTitle: { color: dbb_theme.text, fontSize: 23, fontWeight: '900', letterSpacing: -.4 },
   caption: { color: dbb_theme.muted, fontSize: 12, lineHeight: 18 },
   button: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 15, borderRadius: 15 },
-  buttonText: { color: '#18233D', fontWeight: '900', fontSize: 14 },
-  ghostButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 15, borderWidth: 1, borderColor: dbb_theme.line, backgroundColor: '#243253' },
+  buttonText: { color: '#14332E', fontWeight: '900', fontSize: 14 },
+  ghostButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 15, borderWidth: 1, borderColor: dbb_theme.line, backgroundColor: '#23434C' },
   ghostText: { color: dbb_theme.text, fontWeight: '700', fontSize: 13 },
-  hero: { borderRadius: 27, padding: 23, gap: 25, minHeight: 270, justifyContent: 'space-between', overflow:'hidden' },
+  hero: { borderRadius: 28, padding: 23, gap: 26, minHeight: 272, justifyContent: 'space-between', overflow:'hidden', borderWidth:1, borderColor:'#A9E5A4' },
   heroSearch: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 15, minHeight: 58 },
-  input: { backgroundColor: '#111B35', color: dbb_theme.text, borderWidth: 1, borderColor: dbb_theme.line, borderRadius: 13, paddingHorizontal: 15, paddingVertical: 13, fontSize: 15 },
+  input: { backgroundColor: '#10282F', color: dbb_theme.text, borderWidth: 1, borderColor: dbb_theme.line, borderRadius: 13, paddingHorizontal: 15, paddingVertical: 13, fontSize: 15 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   heading: { color: dbb_theme.text, fontSize: 28, fontWeight: '900', letterSpacing: -.7 },
   itemTitle: { color: dbb_theme.text, fontSize: 16, fontWeight: '800' },
