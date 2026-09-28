@@ -362,7 +362,7 @@ export default function Dbb_App() {
     const dbb_palette=dbb_shelf_colors[dbb_product.dbb_category]||dbb_shelf_colors.Market;
     return <Dbb_Card key={dbb_product.dbb_id} dbb_style={{ gap: 12, backgroundColor:dbb_palette.background,borderColor:dbb_palette.border,padding:14 }}>
       <View style={{flexDirection:'row',gap:13,alignItems:'center'}}>
-        <View style={{ width: 100, height: 104, borderRadius: 19, backgroundColor: dbb_product.dbb_image_url?.includes('/macrocenter/product/07155709/')?dbb_palette.soft:'#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow:'hidden',borderWidth:1,borderColor:dbb_palette.border }}>
+        <View style={{ width: 100, height: 104, borderRadius: 19, backgroundColor: dbb_palette.soft, alignItems: 'center', justifyContent: 'center', overflow:'hidden',borderWidth:1,borderColor:dbb_palette.border }}>
           {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:94,height:98}} resizeMode="contain" />:<Ionicons name="cube-outline" size={38} color={dbb_palette.accent} />}</View>
         <View style={{ flex: 1, gap:5 }}>
           <View style={{backgroundColor:dbb_palette.soft,borderRadius:8,paddingHorizontal:8,paddingVertical:4,alignSelf:'flex-start'}}><Text style={{color:dbb_palette.accent,fontSize:10,fontWeight:'900'}}>{dbb_product.dbb_category.toLocaleUpperCase('tr-TR')}</Text></View>
@@ -409,7 +409,7 @@ export default function Dbb_App() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:12,paddingRight:12}}>
         {dbb_products.slice(0,18).map((dbb_product,dbb_index)=><Pressable key={dbb_product.dbb_id} onPress={()=>{dbb_set_query(dbb_product.dbb_name);dbb_set_tab('search');}}
           style={{width:154,borderRadius:21,padding:11,gap:9,backgroundColor:['#FFE9C8','#DFF4E8','#E7EBFF','#FFE3DE'][dbb_index%4],borderWidth:1,borderColor:'#FFFFFF'}}>
-          <View style={{height:115,borderRadius:17,backgroundColor:'#FFFFFF',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+          <View style={{height:115,borderRadius:17,backgroundColor:['#FFF0D8','#CFF0DE','#DDE6FF','#FFDDD5'][dbb_index%4],alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
             {dbb_product.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:105,height:105}} resizeMode="contain" />:<Ionicons name="cube-outline" size={39} color={dbb_theme.purple} />}</View>
           <Text numberOfLines={2} style={{color:'#17382E',fontWeight:'900',fontSize:12,minHeight:35}}>{dbb_product.dbb_name}</Text>
           <Text style={{color:'#48665C',fontSize:11,fontWeight:'700'}}>{dbb_product.dbb_catalog_price_kurus?dbb_lira(dbb_product.dbb_catalog_price_kurus):dbb_product.dbb_size || dbb_product.dbb_brand}</Text>
@@ -493,7 +493,7 @@ export default function Dbb_App() {
         const dbb_product = dbb_products.find(dbb_found => dbb_found.dbb_id === dbb_item.dbb_product_id);
         const dbb_lowest = dbb_offers.filter(dbb_offer => dbb_offer.dbb_product_id === dbb_item.dbb_product_id).sort((dbb_a,dbb_b) => dbb_a.dbb_price_kurus - dbb_b.dbb_price_kurus)[0];
         return <Dbb_Card key={dbb_item.dbb_product_id} dbb_style={{ flexDirection: 'row', alignItems: 'center',backgroundColor:'#F6FAF0',borderColor:'#D7E8CE',padding:13 }}>
-          {dbb_product?.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:53,height:53,borderRadius:10,backgroundColor:'white'}} resizeMode="contain" />:<Ionicons name="cube-outline" size={28} color="#338768" />}
+          {dbb_product?.dbb_image_url?<Image source={{uri:dbb_product.dbb_image_url}} style={{width:53,height:53,borderRadius:10,backgroundColor:'#E5F4DC'}} resizeMode="contain" />:<Ionicons name="cube-outline" size={28} color="#338768" />}
           <View style={{ flex: 1,gap:2 }}><Text style={{color:'#19382F',fontSize:13,fontWeight:'900'}} numberOfLines={2}>{dbb_product?.dbb_name||'Ürün yükleniyor'}</Text><Text style={{color:'#637C70',fontSize:11}}>{dbb_product?.dbb_size} · {dbb_lowest?dbb_lira(dbb_lowest.dbb_price_kurus):dbb_product?.dbb_catalog_price_kurus?dbb_lira(dbb_product.dbb_catalog_price_kurus):'Fiyat yok'}</Text></View>
           <Pressable onPress={() => dbb_add(dbb_item.dbb_product_id,-1)} accessibilityRole="button" accessibilityLabel={`${dbb_product?.dbb_name||'Ürün'} azalt`}><Ionicons name="remove-circle" size={27} color="#81A695" /></Pressable>
           <Text style={{ color: '#19382F', fontWeight: '900',fontVariant:['tabular-nums'] }}>{dbb_item.dbb_quantity}</Text>
